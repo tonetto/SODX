@@ -1,0 +1,154 @@
+#LyX file created by tex2lyx 2.0.3
+\lyxformat 413
+\begin_document
+\begin_header
+\textclass article
+\begin_preamble
+% Very simple template for SODX lab reports. Most common packages are already included.
+
+% Change according your file encoding
+\usepackage{url}
+
+%opening
+\title{Seminar Report: seminar ID (e.g. Chatty)}
+\author{Name of group members}
+\date{\today{}}
+
+
+\end_preamble
+\use_default_options false
+\language english
+\language_package none
+\inputencoding utf8
+\fontencoding default
+\font_roman default
+\font_sans default
+\font_typewriter default
+\font_default_family default
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+\graphics default
+\paperfontsize 11
+\spacing single
+\use_hyperref 0
+\papersize a4paper
+\use_geometry false
+\use_amsmath 1
+\use_esint 1
+\use_mhchem 0
+\use_mathdots 0
+\cite_engine basic
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\use_refstyle 0
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Standard
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Standard
+
+
+\backslash
+maketitle
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+
+Introduction
+\end_layout
+
+\begin_layout Standard
+
+
+\shape italic
+Introduce the seminar and the main topic related to distributed systems it covers.
+\shape default
+
+\end_layout
+
+\begin_layout Section
+
+System overview
+\end_layout
+
+\begin_layout Standard
+
+
+\shape italic
+Summarize the functionality of the system, accompanying your text with small Erlang code snippets. You do not need to copy&paste all the code, put only the relevant one. Emphasize especially the new parts that you have added or how you have implemented a required functionality.
+\shape default
+
+\end_layout
+
+\begin_layout Section
+
+Evaluation
+\end_layout
+
+\begin_layout Standard
+
+
+\shape italic
+Provide evidence that the functionalities of the system (and its different versions) work (e.g., use screenshots). In addition, you may provide figures or tables with experimental results of the system evaluation. For each seminar, we will provide you with some guidance on which kind of evaluation you should do.
+\shape default
+
+\end_layout
+
+\begin_layout Section
+
+Open questions
+\end_layout
+
+\begin_layout Standard
+
+
+\shape italic
+Try to answer all the open questions in the documentation. If possible, do experiments to support your answers.
+\shape default
+
+\end_layout
+
+\begin_layout Section
+
+Conclusions
+\end_layout
+
+\begin_layout Standard
+
+
+\shape italic
+Describe the lessons you have learnt in this seminar, and give your opinion about it.
+\shape default
+
+\end_layout
+
+\end_body
+\end_document
