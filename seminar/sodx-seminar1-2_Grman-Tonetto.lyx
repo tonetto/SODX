@@ -7,6 +7,8 @@
 
 % Change according your file encoding
 \usepackage{url}
+\usepackage [numbers]{natbib}
+\usepackage{placeins}
 
 %opening
 \title{Seminar Report: Chatty}
@@ -34,6 +36,7 @@
 \output_sync 0
 \bibtex_command default
 \index_command default
+\float_placement !ph
 \paperfontsize 11
 \spacing single
 \use_hyperref false
@@ -95,7 +98,30 @@ In this double seminar session we had a quick introduction to Erlang, with
  the basic concepts of the language.
  Then we were presented with a task were we should implement a distributed
  system that would allow client processes to communicate with each other
- using the messaging infrastructure provided by this Erlang.
+ using the messaging infrastructure provided by Erlang.
+ We did two different implementations:
+\end_layout
+
+\begin_layout Itemize
+One with a single centralized server, that would be responsible to accept
+ clients to join and leave the chat, as well as broadcast the messages sent
+ from any client to all the others connected at that time;
+\end_layout
+
+\begin_layout Itemize
+Another one decentralized, with a possibility of existing multiple servers,
+ that would hold a list of the available servers, and each new client could
+ still have the possibility to connect to any available server.
+ Any message sent from a client would be first broadcast to the clients
+ of the same server, and then to the other servers that would send to their
+ own clients.
+ 
+\end_layout
+
+\begin_layout Standard
+Most parts of the code were already done, with the purpose of introducing
+ the language, but still with gaps that should be completed to make us think
+ about what should be used so that the whole code could work.
 \end_layout
 
 \begin_layout Section
@@ -103,13 +129,798 @@ System overview
 \end_layout
 
 \begin_layout Standard
+We'll define two different implementations of the server code (
+\series bold
+server.erl
+\series default
+ and 
+\series bold
+server2.erl
+\series default
+), with the first being the centralized one, and the second the distributed
+ version.
+\end_layout
 
-\shape italic
-Summarize the functionality of the system, accompanying your text with small
- Erlang code snippets.
- You do not need to copy&paste all the code, put only the relevant one.
- Emphasize especially the new parts that you have added or how you have
- implemented a required functionality.
+\begin_layout Subsection
+server.erl
+\end_layout
+
+\begin_layout Standard
+This source code had only three functions: 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+start()
+\end_layout
+
+\end_inset
+
+, 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+process_request()
+\end_layout
+
+\end_inset
+
+ and 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+broadcast()
+\end_layout
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+The 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+start()
+\end_layout
+
+\end_inset
+
+ function is responsible for creating a child thread that executes 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+process_request()
+\end_layout
+
+\end_inset
+
+ and call 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+register()
+\end_layout
+
+\end_inset
+
+ to register the thread's PID to a name, in this case 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+myserver
+\end_layout
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+The 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+process_request()
+\end_layout
+
+\end_inset
+
+ function is responsible for treating the different messages that our server
+ can receive, and perform the appropriate action for each message.
+ This implementation was capable of working with the following messages
+ defined in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "emdc"
+
+\end_inset
+
+:
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{client_join_req, Name, From}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{client_leave_req, Name, From}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{send, Name, Text}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Finally 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+process_request()
+\end_layout
+
+\end_inset
+
+ is implemented like the following:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+lstparams "basicstyle={\small\ttfamily},language=erlang"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+process_request(Clients) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+	{client_join_req, Name, From} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+	    NewClients = [From | Clients],
+\end_layout
+
+\begin_layout Plain Layout
+
+	    broadcast(NewClients, {join, Name}),
+\end_layout
+
+\begin_layout Plain Layout
+
+	    process_request(NewClients);
+\end_layout
+
+\begin_layout Plain Layout
+
+	{client_leave_req, Name, From} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+	    NewClients = lists:delete(From, Clients),
+\end_layout
+
+\begin_layout Plain Layout
+
+	    broadcast(Clients, {leave, Name}),
+\end_layout
+
+\begin_layout Plain Layout
+
+	    process_request(NewClients);
+\end_layout
+
+\begin_layout Plain Layout
+
+	{send, Name, Text} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+	    broadcast(Clients, {message, Name, Text}),
+\end_layout
+
+\begin_layout Plain Layout
+
+	    process_request(Clients)
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+And 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+broadcast()
+\end_layout
+
+\end_inset
+
+ broadcasts any message to all the clients connected to this server.
+ For this, it makes use of 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lists:map()
+\end_layout
+
+\end_inset
+
+ and 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+fun()
+\end_layout
+
+\end_inset
+
+ functions, that perform a set of actions to all the members of a given
+ list.
+\end_layout
+
+\begin_layout Subsection
+server2.erl
+\end_layout
+
+\begin_layout Standard
+In this 
+\bar under
+more robust
+\bar default
+ version of 
+\series bold
+server.erl
+\series default
+ there are two implementations of 
+the 
+\lang english
+
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+start()
+\end_layout
+
+\end_inset
+
+ function.
+ One of them is to be used only by the first server to get on-line and has
+ no arguments.
+ The second implementation uses one argument which is a tuple that defines
+ one of the existing servers to which the connection should go through in
+ order to succeed.
+ In this multi-step connection, the server that wants to connect will issue
+ a message 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{server_join_req, From}
+\end_layout
+
+\end_inset
+
+ that the existing server will use to update the list of all servers and
+ broadcast it (in the format of 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{update_servers, NewServers}
+\end_layout
+
+\end_inset
+
+ message) to all the servers on-line at that moment, including the new one.
+ To process the messages, we use a different implementation of 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+process_requests()
+\end_layout
+
+\end_inset
+
+:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+lstparams "basicstyle={\small\ttfamily},language=erlang"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+process_requests(Clients, Servers) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+	%% Messages between client and server
+\end_layout
+
+\begin_layout Plain Layout
+
+	{client_join_req, Name, From} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+	    NewClients = [From|Clients],
+\end_layout
+
+\begin_layout Plain Layout
+
+	    broadcast(Servers,{join, Name}),
+\end_layout
+
+\begin_layout Plain Layout
+
+	    process_requests(NewClients, Servers);
+\end_layout
+
+\begin_layout Plain Layout
+
+	{client_leave_req, Name, From} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+	    NewClients = lists:delete(From, Clients),
+\end_layout
+
+\begin_layout Plain Layout
+
+	    broadcast(Servers, {leave, Name}),
+\end_layout
+
+\begin_layout Plain Layout
+
+	    process_requests(NewClients, Servers);
+\end_layout
+
+\begin_layout Plain Layout
+
+	{send, Name, Text} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+	    broadcast(Servers, {message, Name, Text}),
+\end_layout
+
+\begin_layout Plain Layout
+
+	    process_requests(Clients, Servers);
+\end_layout
+
+\begin_layout Plain Layout
+
+	%% Messages between servers
+\end_layout
+
+\begin_layout Plain Layout
+
+	{server_join_req, From} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+	    NewServers = [From|Servers],
+\end_layout
+
+\begin_layout Plain Layout
+
+	    broadcast(NewServers, {update_servers, NewServers}),
+\end_layout
+
+\begin_layout Plain Layout
+
+	    process_requests(Clients, NewServers);
+\end_layout
+
+\begin_layout Plain Layout
+
+	{update_servers, NewServers} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+	    io:format("[SERVER UPDATE] ~w~n", [NewServers]),
+\end_layout
+
+\begin_layout Plain Layout
+
+	    process_requests(Clients, NewServers);
+\end_layout
+
+\begin_layout Plain Layout
+
+	{disconnect} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+	    NewServers = lists:delete(self(), Servers),
+\end_layout
+
+\begin_layout Plain Layout
+
+	    broadcast(NewServers, {update_servers, NewServers}),
+\end_layout
+
+\begin_layout Plain Layout
+
+	    unregister(myserver);
+\end_layout
+
+\begin_layout Plain Layout
+
+	%% Whatever other message is relayed to its clients
+\end_layout
+
+\begin_layout Plain Layout
+
+	RelayMessage ->
+\end_layout
+
+\begin_layout Plain Layout
+
+	    broadcast(Clients, RelayMessage),
+\end_layout
+
+\begin_layout Plain Layout
+
+	    process_requests(Clients, Servers)
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+So, as already explained, this version of the code send the messages to
+ all the clients connected to that server, and broadcast it to the other
+ servers that will replicate it to its own clients.
+\end_layout
+
+\begin_layout Subsection
+client.erl
+\end_layout
+
+\begin_layout Standard
+As the client code, 
+\series bold
+client.erl
+\series default
+ implements a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+start()
+\end_layout
+
+\end_inset
+
+ and a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+init_client()
+\end_layout
+
+\end_inset
+
+ functions that bind the client to a server (sending a message 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{client_join_req, MyName, self()}
+\end_layout
+
+\end_inset
+
+ ) and also calling two functions:
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+process_commands()
+\end_layout
+
+\end_inset
+
+ from the main process;
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+process_requests()
+\end_layout
+
+\end_inset
+
+ from a child thread.
+\end_layout
+
+\begin_layout Standard
+The 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+process_requests()
+\end_layout
+
+\end_inset
+
+ function, similar to the server implementation, processes the messages
+ received by the server, and 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+process_commands()
+\end_layout
+
+\end_inset
+
+ creates a terminal that accepts user input, the chat messages for instance,
+ and send them to the server to be broadcast to the other users connected.
+ In case the user enters 
+\series bold
+exit
+\series default
+ on the chat console, the client is disconnected from the server, and a
+ message warning the other clients about the change is sent.
+\end_layout
+
+\begin_layout Standard
+The client implementation of 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+process_requests()
+\end_layout
+
+\end_inset
+
+ is like the following:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+lstparams "basicstyle={\small\ttfamily},language=erlang"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+process_request() ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+	{join, Name} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+	    io:format("[JOIN] ~s joined the chat~n", [Name]),
+\end_layout
+
+\begin_layout Plain Layout
+
+	    process_request();
+\end_layout
+
+\begin_layout Plain Layout
+
+	{leave, Name} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+	    io:format("[LEAVE] ~s leaved the chat~n", [Name]),
+\end_layout
+
+\begin_layout Plain Layout
+
+	    process_request();
+\end_layout
+
+\begin_layout Plain Layout
+
+	{message, Name, Text} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+	    io:format("[~s] ~s", [Name, Text]),
+\end_layout
+
+\begin_layout Plain Layout
+
+	    process_request()
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Section
@@ -117,25 +928,782 @@ Evaluation
 \end_layout
 
 \begin_layout Standard
+We'll make this evaluation in two parts, considering the simpler version
+ and the more robust.
+\end_layout
 
+\begin_layout Subsection
+Simple version
+\end_layout
+
+\begin_layout Standard
+Following the design of the simple version, it does quite well what it's
+ supposed to do.
+ The server runs up on-line, allowing clients to connect to it, and broadcasts
+ messages between them as expected.
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+FloatBarrier
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename seminar1/screens/server_node.png
+	scale 50
+	clip
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+serve_node window
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename seminar1/screens/client_node1.png
+	scale 50
+	clip
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+client_node1 window
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename seminar1/screens/client_node2.png
+	scale 50
+	clip
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+client_node2 window
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+FloatBarrier
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+If for some reason the server disconnects (e.g.
+ you kill the erlang instance that is running the server) the clients stay
+ in the connected state, but of course without any connection.
+ Trying to run the server up again, the clients won't be able to reach back
+ the sever.
+\end_layout
+
+\begin_layout Standard
+In a test running 10 clients connected to the server, all the clients were
+ able to send and receive the messages without problems.
+\end_layout
+
+\begin_layout Subsection
+Robust version
+\end_layout
+
+\begin_layout Standard
+As the name suggest, this is a more robust version of the chat system implementa
+tion.
+ Using a distributed set of servers, clients can connect to whatever server
+ they desire, the messages are replicated to all clients, no matter to which
+ server they are connected to and there are also interactions between the
+ servers to handle the connections and disconnections.
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+FloatBarrier
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename seminar2/screens/server_node1.png
+	scale 50
+	clip
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+serve_node1 window
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename seminar2/screens/server_node2.png
+	scale 50
+	clip
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+serve_node2 window
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename seminar2/screens/client_node1.png
+	scale 50
+	clip
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+client_node1 window
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename seminar2/screens/client_node2.png
+	scale 50
+	clip
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+client_node2 window
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+FloatBarrier
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+As we can see from the previous figures, the chat systems works well for
+ a normal use of the system.
+ We can also send a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{disconnect}
+\end_layout
+
+\end_inset
+
+ message from one server to the other, so that it leaves the network.
+ But now, some problems rise:
+\end_layout
+
+\begin_layout Itemize
+When the server is disconnected, its clients stay in a 
+\series bold
+connected
+\series default
+ state, and even after it's back on-line, the former clients that belonged
+ to it can reach the chat network, but they can't be reached by the other's
+ messages.
+ And it's because the clients still have the server's alias (i.e.
+ 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{myserver, 'server_node2@127.0.0.1'}
+\end_layout
+
+\end_inset
+
+) but the server is not aware of them anymore (i.e.
+ 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Clients
+\end_layout
+
+\end_inset
+
+ list is empty).
+ A weird inconsistency that could be solved with a message being sent from
+ the server, to all it's clients when it's disconnected.
+ The 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:server2.erl-disconnect-issue"
+
+\end_inset
+
+ shows this behavior.
+\end_layout
+
+\begin_layout Itemize
+If an existing server instance is killed (e.g.
+ Ctrl+G and Q, to quit, or the terminal window is closed) the server will
+ this time not only leave it's clients unsupported, but also all the other
+ servers won't be aware that it left the chat network.
+ If this server connects back, it will broadcast it's PID to the other servers,
+ creating another inconsistency.
+ This can be fixed by trapping the operating system's exit signal and performing
+ a proper disconnection procedure (i.e.
+ tell the others servers that it's leaving, and again, tell it's clients
+ that it's leaving as well).
+ The 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:buggy-server2.erl"
+
+\end_inset
+
+ shows this behavior.
+\end_layout
+
+\begin_layout Standard
+A proposed implementation for these fixes is included in the tarball file
+ sent along with this report, in the 
 \shape italic
-Provide evidence that the functionalities of the system (and its different
- versions) work (e.g., use screenshots).
- In addition, you may provide figures or tables with experimental results
- of the system evaluation.
- For each seminar, we will provide you with some guidance on which kind
- of evaluation you should do.
+seminar2/src/bis
+\shape default
+ directory.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align left
+\begin_inset Graphics
+	filename seminar2/screens/disconnect.png
+	scale 30
+	clip
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+server2.erl disconnect issue
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:server2.erl-disconnect-issue"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align left
+\begin_inset Graphics
+	filename seminar2/screens/buggy_server2.png
+	scale 30
+	clip
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+buggy server2.erl
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:buggy-server2.erl"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+FloatBarrier
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Section
 Open questions
 \end_layout
 
-\begin_layout Standard
+\begin_layout Subsection
+Simple server
+\end_layout
+
+\begin_layout Itemize
 
 \shape italic
-Try to answer all the open questions in the documentation.
- If possible, do experiments to support your answers.
+Does this solution scale when the number of users increase?
+\end_layout
+
+\begin_layout Standard
+Trying it with 10 users, the service was still working.
+ But imagining it spread to different locations, by having only one centralized
+ server this solution won't scale.
+ Clients closer or with faster connections with the server will experience
+ the service in a different way compared to others that would be far from
+ it.
+\end_layout
+
+\begin_layout Itemize
+
+\shape italic
+What happens if the server fails?
+\end_layout
+
+\begin_layout Standard
+The clients stay in a 
+\shape italic
+connected
+\shape default
+ state, although it's not possible to reach the other clients in the chat
+ network.
+ If the server comes back, they'll still be isolated because the clients
+ list on the server won't be populated.
+\end_layout
+
+\begin_layout Itemize
+
+\shape italic
+Are the messages guaranteed to be delivered in the order they were issued
+ (hint: think on several clients sending messages concurrently)?
+\end_layout
+
+\begin_layout Standard
+Since the messages are exchanged using TCP, they are guaranteed to be delivered.
+ But since clients can connect from different sources, in different locations,
+ messages may not arrive in the same order that they where really created.
+ So in fact, each client may experience the connection in a different way,
+ depending on how far they are from the server, and therefore from the other
+ clients.
+ The erlang interpreter will queue the messages that arrive to the server
+ and it will be delivered on that order.
+\end_layout
+
+\begin_layout Itemize
+
+\shape italic
+Does it matter the time in which users join and leave the chat? Does this
+ influence the order of message delivery?
+\begin_inset CommandInset label
+LatexCommand label
+name "Does-it-matter"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Depending on the latency of the network where a group of clients are and
+ the load of the server, it might happen that a client leaves the chat,
+ but another client that was chatting with him may send a new message.
+ The client that left will not receive the message, but the sender might
+ see in his log that the message was sent and after that the other client
+ left, creating an unreal experience for the sender.
+\end_layout
+
+\begin_layout Subsection
+Robust server
+\end_layout
+
+\begin_layout Itemize
+
+\shape italic
+What are the advantages and disadvantages of this implementation regarding
+ the previous one?
+\end_layout
+
+\begin_layout Standard
+Advantages could be that, considering a good connection between the servers,
+ the latency between the messages sent and received by the clients can be
+ enhanced/reduced, since each client now has the option to connect to different
+ servers and chose the one that's best for him; considering a number of
+ clients connected to the system, now as they'll be spread across multiple
+ servers, each server will be less loaded, and then more capable of handling
+ the messages and connections.
+\end_layout
+
+\begin_layout Standard
+Disadvantages could be that if the connection between the servers for some
+ reason breaks, the clients will be islanded from the others connected to
+ different servers; a server can be disconnected by receiving a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{disconnect}
+\end_layout
+
+\end_inset
+
+ message, creating another big possibility of inconsistency, since the clients
+ will stay in the 
+\shape italic
+connected
+\shape default
+ state.
+\end_layout
+
+\begin_layout Itemize
+
+\shape italic
+What happens if a server fails?
+\end_layout
+
+\begin_layout Standard
+The other servers will not know it failed and the clients will stay in the
+ 
+\shape italic
+connected
+\shape default
+ state, resulting an inconsistency between the members (servers and clients)
+ of the chat network.
+\end_layout
+
+\begin_layout Itemize
+
+\shape italic
+Are the messages guaranteed to be delivered in order?
+\end_layout
+
+\begin_layout Standard
+Still the same problem of latency can exist, but with a good possible enhancemen
+t brought by a distributed servers sets.
+\end_layout
+
+\begin_layout Itemize
+
+\shape italic
+Does it matter the order and time which users join and leave the chat?
+\end_layout
+
+\begin_layout Standard
+Same as 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "Does-it-matter"
+
+\end_inset
+
+, but this time a new server with a group of clients can connect to the
+ network, as well as an existing server can disconnect or fail, so the user
+ experience may vary depending on where it is placed and to which server
+ it's connected to.
+ Even though we have multiple servers, the list of existing clients is not
+ shared between them.
+\end_layout
+
+\begin_layout Itemize
+
+\shape italic
+And for the servers, what happens if there are concurrent requests to join
+ or leave the system?
+\end_layout
+
+\begin_layout Standard
+Since the servers have a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Servers
+\end_layout
+
+\end_inset
+
+ populated list with the PID of all the other servers, but the connection
+ is not centralized in one individual or they don't share memory, easily
+ an inconsistency can be created when one server disconnects, issues a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{update_servers, NewServers}
+\end_layout
+
+\end_inset
+
+ message, and at the same time a new server joins, and a new 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{update_servers, NewServers}
+\end_layout
+
+\end_inset
+
+ will be issued, from a different server.
+ From this point, it's impossible to predict what will happen to each server
+ connected to the network regarding which list will prevail.
 \end_layout
 
 \begin_layout Section
@@ -143,10 +1711,24 @@ Conclusions
 \end_layout
 
 \begin_layout Standard
+We learned the basics of the Erlang language, implementing two versions
+ of a chat server that make possible users (processes) to communicate, using
+ the messaging system available in Erlang.
+ The simple implementation was not scalable but was not open to problems
+ that rose on the robust version.
+ So we could also learn that the more features and complexity you add to
+ a system, the more flaws and problems your code will be suitable.
+\end_layout
 
-\shape italic
-Describe the lessons you have learnt in this seminar, and give your opinion
- about it.
+\begin_layout Standard
+\begin_inset CommandInset bibtex
+LatexCommand bibtex
+bibfiles "sodx"
+options "plain"
+
+\end_inset
+
+
 \end_layout
 
 \end_body

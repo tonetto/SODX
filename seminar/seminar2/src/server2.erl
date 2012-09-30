@@ -27,7 +27,7 @@ process_requests(Clients, Servers) ->
 	    process_requests(NewClients, Servers);
 	{client_leave_req, Name, From} ->
 	    NewClients = lists:delete(From, Clients),
-	    broadcast(Server, {leave, Name}),
+	    broadcast(Servers, {leave, Name}),
 	    process_requests(NewClients, Servers);
 	{send, Name, Text} ->
 	    broadcast(Servers, {message, Name, Text}),
