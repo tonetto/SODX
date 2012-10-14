@@ -1,0 +1,61 @@
+MARRÓN VIDA, DIEGO 
+MELACHRINOS, PETROS
+
+* The command provided in Section 3.1 to initiate client1 is not correct
+
+CHACON, ALESSANDRO ENRIQUE
+LEVEL RUIZ, ERNESTO ALFONSO
+
+* Show in the evaluation that when a server disconnects, only their clients are affected
+* Last open question should evaluate the impact of having concurrent 'server_join_req' messages in different servers
+
+BORDALLO ESTOR, RUBEN
+MORON DURAN, FRANCISCO DAVID
+
+* Show in the evaluation that when a server disconnects, only their clients are affected
+* In the last open question, there is a problem with the list of servers when having concurrent 'server_join_req' messages in different servers
+
+FORERO SANCHEZ, PEDRO
+CALDERON, GIANCARLO
+
+* Some additional code snippets would help for a better understanding
+* In the last open question, there is a problem with the list of servers when having concurrent 'server_join_req' messages in different servers
+
+ZOGER, JIMMY
+SEDAR, MOHOTTIGE ROSHAN
+
+* More details are needed to describe the functionality of the system, accompanying the text with small Erlang code snippets
+* No evidence is provided in the evaluation that the system works. Screenshots are not a perfect solution, but in our case they are ok, given that they provide past information about the execution of the Erlang program
+* Some question is not answered. When in doubt, ask!
+
+DJAKOU DJATCHA, CHRISTIAN
+SUBIRATS CASTELL, JOSEP
+
+* Some figures are not very readable
+* Next time, deliver only .PDF and .ERL files, not .SVN, .BEAM, or dumps
+
+FAROKHMANESH, FARNOOSH
+CUBERO LUQUE, LORENZO JESUS
+
+* More details are needed to describe the functionality of the system, for instance by enhancing the Erlang code snippets
+* No evidence is provided in the evaluation that the system works (e.g. screenshots)
+
+DEMETRIOU, CHARIS
+DEMETRIOU, NICOS
+
+* Compressed file containing the source files cannot be extracted
+
+GANDUXE PREGONA, ORIOL
+PARRAMÓN TUBELLA, ROGER
+
+* Code added to process_requests function at client.erl is not correct
+* In server2.erl, messages client_join_req, client_leave_req, and send must be broadcasted to servers, not to clients
+* Show in the evaluation that when a server disconnects, only their clients are affected
+* Some answers to the open questions need to be refined
+* .TEX files cannot be compiled correctly
+* Next time, deliver only .PDF and .ERL files, not .TEX, or .BEAM
+
+NUHIC, ISAK
+
+* Show in the evaluation that when a server disconnects, only their clients are affected
+* You must provide also your .ERL files
