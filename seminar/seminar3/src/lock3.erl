@@ -116,12 +116,12 @@ resendRequest(From, Refs, MyLockID, LamportClock) ->
     IsNamePresent = lists:keymember(process_info(From),1,Refs),
     if
         IsPidPresent or IsNamePresent->
+            Refs;
+        true ->
             R = make_ref(),
             Refs2 = [R|Refs],
             From ! {request, self(), R, MyLockID, LamportClock},
-            Refs2;
-        true ->
-            Refs
+            Refs2
     end.
 
 %%--------------------------------------------------------------------
