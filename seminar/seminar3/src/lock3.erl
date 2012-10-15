@@ -36,7 +36,7 @@ requests(MyLockID, Nodes, TakeTime) ->
       fun(P) ->
 	      R = make_ref(),
 	      P ! {request, self(), R, MyLockID, TakeTime},
-	      R
+	      {P,R}
       end,
       Nodes).
 
@@ -75,7 +75,7 @@ wait(Nodes, Master, Refs, Waiting, MyLockID, TakeTime, LamportClock) ->
             end;
 	{ok, Ref, ExtClock} ->
             LamportClock2 = updateClock(LamportClock, ExtClock),
-	    Refs2 = lists:delete(Ref, Refs),
+	    Refs2 = lists:keydelete(Ref, 2, Refs),
 	    wait(Nodes, Master, Refs2, Waiting, MyLockID, TakeTime, LamportClock2);
 	release ->
 	    ok(Waiting, LamportClock),
@@ -112,10 +112,17 @@ held(Nodes, Waiting, MyLockID, LamportClock) ->
 %% Comments: 
 %%--------------------------------------------------------------------
 resendRequest(From, Refs, MyLockID, LamportClock) ->
-    R = make_ref(),
-    Refs2 = [R|Refs],
-    From ! {request, self(), R, MyLockID, LamportClock},
-    Refs2.
+    IsPidPresent  = lists:keymember(From,1,Refs),
+    IsNamePresent = lists:keymember(process_info(From),1,Refs),
+    if
+        IsPidPresent or IsNamePresent->
+            R = make_ref(),
+            Refs2 = [R|Refs],
+            From ! {request, self(), R, MyLockID, LamportClock},
+            Refs2;
+        true ->
+            Refs
+    end.
 
 %%--------------------------------------------------------------------
 %% Function: updateClock/2
