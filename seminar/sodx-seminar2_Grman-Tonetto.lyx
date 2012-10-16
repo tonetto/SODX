@@ -7289,6 +7289,107 @@ name "tab:lock3-execution-(sep)"
 
 \end_layout
 
+\begin_layout Standard
+For a small number of 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+work
+\end_layout
+
+\end_inset
+
+ and 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ instances it wasn't possible to notice a big difference between 
+\series bold
+\emph on
+lock1
+\series default
+\emph default
+ and 
+\series bold
+\emph on
+lock3
+\series default
+\emph default
+ implementations.
+ Even modifying 
+\series bold
+\emph on
+muty
+\series default
+\emph default
+ (calling it 
+\series bold
+\emph on
+mutybis
+\series default
+\emph default
+) to create a big number (20) of both 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+work
+\end_layout
+
+\end_inset
+
+ and 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ instances, the actual results didn't differ much from each implementation.
+ This is probably caused by the fact that we are executing these instances
+ in our own machines and using the internal loopback network interface.
+\end_layout
+
+\begin_layout Standard
+Running this application on a real environment, where nodes are geographically
+ separated and network overhead will play an important role, should give
+ different results in the sense that 
+\series bold
+\emph on
+lock3
+\series default
+\emph default
+ using logical clocks will present the fairest results.
+ The source code for 
+\emph on
+mutybis.erl
+\emph default
+, along with the test results for all the tests performed for this report
+ are part of the tarball file that included this document.
+\end_layout
+
 \begin_layout Section
 Open questions
 \end_layout
