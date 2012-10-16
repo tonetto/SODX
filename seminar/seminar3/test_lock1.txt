@@ -1,0 +1,53 @@
+1000,2000,5000
+Paul: 13 locks taken, average of 2292.4615384615386 ms, 0 withdrawal situations
+John: 13 locks taken, average of 2473.769230769231 ms, 0 withdrawal situations
+George: 14 locks taken, average of 2057.785714285714 ms, 0 withdrawal situations 
+Ringo: 14 locks taken, average of 2285.785714285714 ms, 0 withdrawal situations
+
+3000,2000,5000
+Ringo: 11 locks taken, average of 1419.8181818181818 ms, 0 withdrawal situations 
+George: 11 locks taken, average of 1232.2727272727273 ms, 0 withdrawal situations
+John: 12 locks taken, average of 1234.9166666666667 ms, 0 withdrawal situations
+Paul: 11 locks taken, average of 1416.1818181818182 ms, 0 withdrawal situations
+
+6000,2000,5000
+Paul: 13 locks taken, average of 469.0 ms, 0 withdrawal situations
+Ringo: 14 locks taken, average of 678.8571428571429 ms, 0 withdrawal situations
+George: 16 locks taken, average of 655.75 ms, 0 withdrawal situations
+John: 16 locks taken, average of 579.125 ms, 0 withdrawal situations
+
+1000,1000,5000
+George: 30 locks taken, average of 1042.9 ms, 0 withdrawal situations
+Paul: 29 locks taken, average of 1101.2068965517242 ms, 0 withdrawal situations
+John: 32 locks taken, average of 1036.0 ms, 0 withdrawal situations
+Ringo: 31 locks taken, average of 987.3548387096774 ms, 0 withdrawal situations
+
+1000,6000,5000
+George: 5 locks taken, average of 2835.0 ms, 4 withdrawal situations
+Paul: 4 locks taken, average of 3656.0 ms, 4 withdrawal situations
+John: 5 locks taken, average of 3577.6 ms, 3 withdrawal situations
+Ringo: 6 locks taken, average of 3371.0 ms, 3 withdrawal situations
+
+6000,7000,5000
+John: 8 locks taken, average of 1943.5 ms, 5 withdrawal situations
+Ringo: 10 locks taken, average of 2673.8 ms, 2 withdrawal situations
+George: 6 locks taken, average of 2384.0 ms, 6 withdrawal situations
+Paul: 9 locks taken, average of 2644.4444444444443 ms, 3 withdrawal situations
+
+7000,6000,5000
+George: 7 locks taken, average of 1961.142857142857 ms, 1 withdrawal situations
+Paul: 7 locks taken, average of 2381.1428571428573 ms, 0 withdrawal situations
+Ringo: 6 locks taken, average of 2613.8333333333335 ms, 2 withdrawal situations
+John: 5 locks taken, average of 1573.4 ms, 3 withdrawal situations
+
+1000,4000,5000
+John: 9 locks taken, average of 3015.4444444444443 ms, 4 withdrawal situations
+George: 11 locks taken, average of 3275.6363636363635 ms, 1 withdrawal situations
+Paul: 7 locks taken, average of 3349.714285714286 ms, 6 withdrawal situations
+Ringo: 9 locks taken, average of 3499.6666666666665 ms, 4 withdrawal situations
+
+1000,3500,5000
+Paul: 8 locks taken, average of 3227.25 ms, 2 withdrawal situations
+George: 9 locks taken, average of 2654.777777777778 ms, 2 withdrawal situations
+John: 9 locks taken, average of 2590.8888888888887 ms, 3 withdrawal situations
+Ringo: 9 locks taken, average of 2861.0 ms, 3 withdrawal situations

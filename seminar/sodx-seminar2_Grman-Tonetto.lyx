@@ -1,0 +1,7326 @@
+#LyX 2.0 created this file. For more info see http://www.lyx.org/
+\lyxformat 413
+\begin_document
+\begin_header
+\textclass article
+\begin_preamble
+% Very simple template for SODX lab reports. Most common packages are already included.
+
+% Change according your file encoding
+\usepackage{url}
+\usepackage{placeins}
+
+%opening
+\title{Seminar Report: Muty}
+\author{Peter Grman, Leonardo Tonetto}
+\date{\today{}}
+\end_preamble
+\use_default_options false
+\maintain_unincluded_children false
+\language english
+\language_package auto
+\inputencoding utf8
+\fontencoding default
+\font_roman default
+\font_sans default
+\font_typewriter default
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\float_placement !h
+\paperfontsize 11
+\spacing single
+\use_hyperref false
+\papersize a4paper
+\use_geometry false
+\use_amsmath 1
+\use_esint 1
+\use_mhchem 0
+\use_mathdots 0
+\cite_engine basic
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\use_refstyle 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Standard
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+
+\backslash
+maketitle
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Introduction
+\end_layout
+
+\begin_layout Standard
+In this seminar session we implemented a distributed mutual-exclusion lock
+ system, using three different approaches:
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock1
+\end_layout
+
+\end_inset
+
+: which was the simplest version, where only the first lock acquire attempt
+ could be considered fair.
+ All the others would only be granted after some clients started to give
+ up waiting for the locks;
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock2
+\end_layout
+
+\end_inset
+
+: implemented an unfair priority design where each lock instance was given
+ a fixed and different ID, and based on this ID the decision about granting
+ locks were taken.
+ Obviously it was unfair because each client was always requesting the lock
+ to it's own lock instance, which could have a higher or lower priority
+ that would be the same through the whole execution;
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock3
+\end_layout
+
+\end_inset
+
+: finally this third implementation using Lamport Clocks
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Gaines_time"
+
+\end_inset
+
+, and this one presented itself as the fairest.
+\end_layout
+
+\begin_layout Standard
+This time, 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock1
+\end_layout
+
+\end_inset
+
+ was already done and all we had to do was just copy&paste it from 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "emdc_sodx2"
+
+\end_inset
+
+ and execute it to see the results.
+ All the others, we implemented as part of this assignment.
+\end_layout
+
+\begin_layout Section
+System overview
+\end_layout
+
+\begin_layout Standard
+This mutual-exclusion was designed to use four different modules per execution:
+ 
+\series bold
+gui
+\series default
+, 
+\series bold
+muty
+\series default
+, 
+\series bold
+worker
+\series default
+ and 
+\series bold
+lock
+\series default
+.
+ Each of these will be briefly described next.
+ Note that the 
+\series bold
+lock
+\series default
+s will use a multicast strategy and work in an asynchronous network where
+ we don't have access to a synchronized clock.
+\end_layout
+
+\begin_layout Subsection
+gui
+\end_layout
+
+\begin_layout Standard
+Including the 
+\emph on
+wx
+\emph default
+ external library, defines a simple frame that will show different colors
+ depending on the message that it receives.
+ 
+\emph on
+Yellow
+\emph default
+ for a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+waiting
+\end_layout
+
+\end_inset
+
+ message, 
+\emph on
+red
+\emph default
+ for a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+taken
+\end_layout
+
+\end_inset
+
+ message and 
+\emph on
+blue
+\emph default
+ for a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+leave
+\end_layout
+
+\end_inset
+
+ message.
+ Each 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+worker
+\end_layout
+
+\end_inset
+
+ instance will have its own 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+gui
+\end_layout
+
+\end_inset
+
+ frame to show in which state it is.
+\end_layout
+
+\begin_layout Subsection
+muty
+\end_layout
+
+\begin_layout Standard
+It's simply the module that we are going to use to execute the whole system.
+ It spawns 4 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ and 4 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+worker
+\end_layout
+
+\end_inset
+
+ instances.
+ Each of these are initialized using different argument values for its 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+init
+\end_layout
+
+\end_inset
+
+ function that will be described next on this document.
+ The 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ and 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+worker
+\end_layout
+
+\end_inset
+
+ instances are organized like present on 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:muty-workerand-lock"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename seminar3/muty.png
+	scale 35
+	clip
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+muty 
+\emph on
+worker
+\emph default
+
+\begin_inset space ~
+\end_inset
+
+and 
+\emph on
+lock
+\emph default
+ instances
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:muty-workerand-lock"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+worker
+\end_layout
+
+\begin_layout Standard
+The 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+worker
+\end_layout
+
+\end_inset
+
+ instances are the actual consumers of this system.
+ The 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+init
+\end_layout
+
+\end_inset
+
+ function, called by the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+muty
+\end_layout
+
+\end_inset
+
+ module, needs the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Name
+\end_layout
+
+\end_inset
+
+ of the instance that will be showed on correspondent the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+gui
+\end_layout
+
+\end_inset
+
+ frame, the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ instance that it should request the lock (unique to each one in this implementa
+tion), a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Seed
+\end_layout
+
+\end_inset
+
+ number used for random number generation (also unique) and the maximum
+ values that the random number generator should use to deliver the time
+ that the instance must wait to send a new request and to release an acquired
+ lock, 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Sleep
+\end_layout
+
+\end_inset
+
+ and 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Work
+\end_layout
+
+\end_inset
+
+ respectively.
+\end_layout
+
+\begin_layout Standard
+The 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+worker
+\end_layout
+
+\end_inset
+
+, after issuing a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+take
+\end_layout
+
+\end_inset
+
+ message to its 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ instance, will wait for a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+taken
+\end_layout
+
+\end_inset
+
+ message back from the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ for a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+deadlock
+\end_layout
+
+\end_inset
+
+ time, defined globally as 5000 ms.
+ In case of success it will wait for a random time before releasing the
+ lock, sending a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+release
+\end_layout
+
+\end_inset
+
+ message to its 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ instance, otherwise to avoid a deadlock condition it will also send the
+ same message and get back to its initial state.
+ For each of these conditions it's updating its corresponding 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+gui
+\end_layout
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+Throughout the whole execution the time waiting for a lock, the time carrying
+ a lock and the number of withdrawals are gathered and this data is presented
+ afterwards.
+ Some interesting conclusions can be inferred from these numbers, that will
+ be discussed later on this document.
+\end_layout
+
+\begin_layout Subsection
+lock
+\end_layout
+
+\begin_layout Standard
+As mentioned previously, there are three different implementations of this
+ module, each one described next.
+\end_layout
+
+\begin_layout Subsubsection
+lock1 - The deadlock prone
+\end_layout
+
+\begin_layout Standard
+This is the base implementation, the simplest one but most of its structure
+ is kept for the next implementations.
+ Three states are defined for an instance of this module:
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+\emph on
+Open
+\series default
+\emph default
+: in this state, the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ instance will wait for a message that can be:
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+A 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+take
+\end_layout
+
+\end_inset
+
+ message from it's corresponding 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+worker
+\end_layout
+
+\end_inset
+
+; the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ will broadcast a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+request
+\end_layout
+
+\end_inset
+
+ message to all the other locks instances available bringing it to the 
+\series bold
+\emph on
+wait
+\series default
+\emph default
+ state.
+ While sending the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+request
+\end_layout
+
+\end_inset
+
+ messages, it sends along a unique reference number that will be store in
+ the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Refs
+\end_layout
+
+\end_inset
+
+ list so that later, on the 
+\series bold
+\emph on
+wait
+\series default
+\emph default
+ state, it will be verified;
+\end_layout
+
+\begin_layout Itemize
+A 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+request
+\end_layout
+
+\end_inset
+
+ message from any other 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ instance, which will automatically trigger a message 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+ok
+\end_layout
+
+\end_inset
+
+ to be sent to the requester, bringing it back to the 
+\series bold
+\emph on
+open
+\series default
+\emph default
+ state;
+\end_layout
+
+\begin_layout Itemize
+A 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+stop
+\end_layout
+
+\end_inset
+
+ message sent by the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+muty
+\end_layout
+
+\end_inset
+
+ instance, issued by the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+stop()
+\end_layout
+
+\end_inset
+
+ function, ending the execution of this instance;
+\end_layout
+
+\end_deeper
+\begin_layout Itemize
+
+\series bold
+\emph on
+Wait
+\series default
+\emph default
+: in this state, the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ instance will wait for the following messages:
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+A 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+request
+\end_layout
+
+\end_inset
+
+ message from any other 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ instance.
+ On this implementation, the requests are queued in the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Waiting
+\end_layout
+
+\end_inset
+
+ as a list of tuples containing the requester PID and a reference unique
+ number.
+\end_layout
+
+\begin_layout Itemize
+An 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+ok
+\end_layout
+
+\end_inset
+
+ message that will contain that unique reference number sent on the 
+\series bold
+\emph on
+open
+\series default
+\emph default
+ state after a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+take
+\end_layout
+
+\end_inset
+
+ message, this number is then removed from the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Refs
+\end_layout
+
+\end_inset
+
+ list.
+ If the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Refs
+\end_layout
+
+\end_inset
+
+ list is still not empty, it returns to the 
+\series bold
+\emph on
+wait
+\series default
+\emph default
+ state, otherwise it's no longer waiting for an acknowledgement from the
+ other 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ instances, and then a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+taken
+\end_layout
+
+\end_inset
+
+ message is sent to its corresponding 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+worker
+\end_layout
+
+\end_inset
+
+, that now will have the lock as described before, bringing the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ to the 
+\series bold
+\emph on
+held
+\series default
+\emph default
+ state;
+\end_layout
+
+\begin_layout Itemize
+A 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+release
+\end_layout
+
+\end_inset
+
+ message from its 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+worker
+\end_layout
+
+\end_inset
+
+, meaning that it gave up waiting after a deadlock timeout;
+\end_layout
+
+\end_deeper
+\begin_layout Itemize
+
+\series bold
+\emph on
+Held
+\series default
+\emph default
+: in this state the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+worker
+\end_layout
+
+\end_inset
+
+ has the lock and the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ can receive the following messages:
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+A 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+request
+\end_layout
+
+\end_inset
+
+ message from the other lock instances, that will simply be queued;
+\end_layout
+
+\begin_layout Itemize
+A 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+release
+\end_layout
+
+\end_inset
+
+ message from the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+worker
+\end_layout
+
+\end_inset
+
+ that owns the lock, meaning it doesn't need it anymore and it can be freed,
+ then an 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+ok
+\end_layout
+
+\end_inset
+
+ message is sent back to all the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ instances that were on the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Waiting
+\end_layout
+
+\end_inset
+
+ list and the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ returns to the 
+\series bold
+\emph on
+open
+\series default
+\emph default
+ state.
+\end_layout
+
+\end_deeper
+\begin_layout Subsubsection
+lock2 - The unfair
+\end_layout
+
+\begin_layout Standard
+Here the actual coding begins.
+ Now each 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ instance will have its own and unique 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+LockID
+\end_layout
+
+\end_inset
+
+ that will be used to sort out the potential deadlock issue present on 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock1
+\end_layout
+
+\end_inset
+
+ (this will be discussed later).
+ Based on the ID of a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+request
+\end_layout
+
+\end_inset
+
+ message, the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ instance in the 
+\series bold
+\emph on
+wait
+\series default
+\emph default
+ state will now respond with an immediate 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+ok
+\end_layout
+
+\end_inset
+
+ message if the requester's ID is lower that its own (note that here it
+ was defined that lower ID means higher priority), otherwise the request
+ will be queued in the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Waiting
+\end_layout
+
+\end_inset
+
+ list.
+ The new code for the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+wait()
+\end_layout
+
+\end_inset
+
+ function could be done this way:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+lstparams "basicstyle={\scriptsize\ttfamily},language=erlang"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+wait(Nodes, Master, Refs, Waiting, MyLockID) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+	{request, From, Ref, ReqID} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+	    if
+\end_layout
+
+\begin_layout Plain Layout
+
+		    ReqID < MyLockID ->
+\end_layout
+
+\begin_layout Plain Layout
+
+                R = make_ref(),
+\end_layout
+
+\begin_layout Plain Layout
+
+                Refs2 = [R|Refs],
+\end_layout
+
+\begin_layout Plain Layout
+
+                From ! {request, self(), R, MyLockID},
+\end_layout
+
+\begin_layout Plain Layout
+
+		        From ! {ok, Ref},
+\end_layout
+
+\begin_layout Plain Layout
+
+                wait(Nodes, Master, Refs2, Waiting, MyLockID);
+\end_layout
+
+\begin_layout Plain Layout
+
+		    true ->
+\end_layout
+
+\begin_layout Plain Layout
+
+		        wait(Nodes, Master, Refs, [{From, Ref}|Waiting], MyLockID)
+\end_layout
+
+\begin_layout Plain Layout
+
+	    end;
+\end_layout
+
+\begin_layout Plain Layout
+
+	(...)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+In this proposed implementation whenever a request from a higher priority
+ 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ instance is received, a new 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+request
+\end_layout
+
+\end_inset
+
+ is issued back to guarantee that the lower priority 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ will receive an 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+ok
+\end_layout
+
+\end_inset
+
+ from the first one.
+ It's not the smartest and most complex one, but except for some duplicate
+ messages over the network this solution works without problems.
+\end_layout
+
+\begin_layout Subsubsection
+lock3 - Lamport clocked
+\end_layout
+
+\begin_layout Standard
+This third version adds the concept of clock synchronization to make the
+ locking decisions to be more fair.
+ But since we don't have access to a central synchronized clock, the Lamport
+ Clock is used for this purpose.
+\end_layout
+
+\begin_layout Standard
+In it, each 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ instance will have a logical clock that will be updated whenever an interaction
+ between different instances occur on the system, such as 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+request
+\end_layout
+
+\end_inset
+
+ and 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+ok
+\end_layout
+
+\end_inset
+
+ messages.
+ These messages should also now carry a time value to be used by the receiving
+ instance.
+\end_layout
+
+\begin_layout Standard
+When on the 
+\series bold
+\emph on
+wait
+\series default
+\emph default
+ state, the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ instances will now decide if an 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+ok
+\end_layout
+
+\end_inset
+
+ message should be sent based on the comparison between the time when the
+ 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+take
+\end_layout
+
+\end_inset
+
+ message was received by that 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ instance and the logical time received on the message, that also in this
+ case, should be the logical time when the other instance received the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+take
+\end_layout
+
+\end_inset
+
+ message.
+\end_layout
+
+\begin_layout Standard
+For this, if a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ instance sends a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+request
+\end_layout
+
+\end_inset
+
+ message with a logical time smaller than the instance that is receiving
+ it, this second one should respond with an 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+ok
+\end_layout
+
+\end_inset
+
+ message, otherwise if the time is higher, the receiver will just queue
+ the request.
+ In case the two values are the same, the concept of a unique ID for each
+ instance used in 
+\series bold
+lock2
+\series default
+ should define what will happen.
+ Note that, for this last case, resending multiple 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+request
+\end_layout
+
+\end_inset
+
+ messages won't be a good idea because now the Lamport clocks will be updated
+ for every new interaction between the instances.
+ A proposed implementation for 
+\series bold
+lock3
+\series default
+ is presented next:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+lstparams "basicstyle={\scriptsize\ttfamily},language=erlang"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+init(MyLockID, Nodes) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    LamportClock = 0,
+\end_layout
+
+\begin_layout Plain Layout
+
+    open(MyLockID, Nodes, LamportClock).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+open(MyLockID, Nodes, LamportClock) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+        {take, Master} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            TakeTime = LamportClock,
+\end_layout
+
+\begin_layout Plain Layout
+
+            Refs = requests(MyLockID, Nodes, TakeTime),
+\end_layout
+
+\begin_layout Plain Layout
+
+            wait(Nodes, Master, Refs, [], MyLockID,
+\end_layout
+
+\begin_layout Plain Layout
+
+                    TakeTime, LamportClock);
+\end_layout
+
+\begin_layout Plain Layout
+
+        {request, From, Ref, _, ExtClock} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            LamportClock2 = updateClock(LamportClock, ExtClock),
+\end_layout
+
+\begin_layout Plain Layout
+
+            From ! {ok, Ref, LamportClock2},
+\end_layout
+
+\begin_layout Plain Layout
+
+            open(MyLockID, Nodes, LamportClock2);
+\end_layout
+
+\begin_layout Plain Layout
+
+        stop ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            ok
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+requests(MyLockID, Nodes, TakeTime) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    lists:map(
+\end_layout
+
+\begin_layout Plain Layout
+
+      fun(P) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+          R = make_ref(),
+\end_layout
+
+\begin_layout Plain Layout
+
+          P ! {request, self(), R, MyLockID, TakeTime},
+\end_layout
+
+\begin_layout Plain Layout
+
+          {P,R}
+\end_layout
+
+\begin_layout Plain Layout
+
+      end,
+\end_layout
+
+\begin_layout Plain Layout
+
+      Nodes).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+wait(Nodes, Master, [], Waiting, MyLockID, _, LamportClock) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    Master ! taken,
+\end_layout
+
+\begin_layout Plain Layout
+
+    held(Nodes, Waiting, MyLockID, LamportClock);
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+wait(Nodes, Master, Refs, Waiting, MyLockID, TakeTime, LamportClock) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+        {request, From, Ref, ReqID, ExtClock} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            LamportClock2 = updateClock(LamportClock, ExtClock),
+\end_layout
+
+\begin_layout Plain Layout
+
+            if
+\end_layout
+
+\begin_layout Plain Layout
+
+                TakeTime < ExtClock ->
+\end_layout
+
+\begin_layout Plain Layout
+
+                    wait(Nodes, Master, Refs, [{From, Ref}|Waiting],
+\end_layout
+
+\begin_layout Plain Layout
+
+                            MyLockID, TakeTime, LamportClock2);
+\end_layout
+
+\begin_layout Plain Layout
+
+                TakeTime > ExtClock ->
+\end_layout
+
+\begin_layout Plain Layout
+
+                    Refs2 = resendRequest(From, Refs, MyLockID, LamportClock2),
+\end_layout
+
+\begin_layout Plain Layout
+
+                    From ! {ok, Ref, LamportClock2},
+\end_layout
+
+\begin_layout Plain Layout
+
+                    wait(Nodes, Master, Refs2, Waiting, MyLockID, TakeTime,
+ LamportClock2);
+\end_layout
+
+\begin_layout Plain Layout
+
+                TakeTime == ExtClock ->
+\end_layout
+
+\begin_layout Plain Layout
+
+                    if
+\end_layout
+
+\begin_layout Plain Layout
+
+                        ReqID < MyLockID ->
+\end_layout
+
+\begin_layout Plain Layout
+
+                            Refs2 = resendRequest(From, Refs, MyLockID,
+ LamportClock2),
+\end_layout
+
+\begin_layout Plain Layout
+
+                            From ! {ok, Ref, LamportClock2},
+\end_layout
+
+\begin_layout Plain Layout
+
+                            wait(Nodes, Master, Refs2, Waiting, MyLockID,
+ TakeTime,
+\end_layout
+
+\begin_layout Plain Layout
+
+                                    LamportClock2);
+\end_layout
+
+\begin_layout Plain Layout
+
+                        true ->
+\end_layout
+
+\begin_layout Plain Layout
+
+                            wait(Nodes, Master, Refs, [{From, Ref}|Waiting],
+\end_layout
+
+\begin_layout Plain Layout
+
+                                    MyLockID, TakeTime, LamportClock2)
+\end_layout
+
+\begin_layout Plain Layout
+
+                    end
+\end_layout
+
+\begin_layout Plain Layout
+
+            end;
+\end_layout
+
+\begin_layout Plain Layout
+
+        {ok, Ref, ExtClock} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            LamportClock2 = updateClock(LamportClock, ExtClock),
+\end_layout
+
+\begin_layout Plain Layout
+
+            Refs2 = lists:keydelete(Ref, 2, Refs),
+\end_layout
+
+\begin_layout Plain Layout
+
+            wait(Nodes, Master, Refs2, Waiting, MyLockID, TakeTime, LamportClock
+2);
+\end_layout
+
+\begin_layout Plain Layout
+
+        release ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            ok(Waiting, LamportClock),
+\end_layout
+
+\begin_layout Plain Layout
+
+            open(MyLockID, Nodes, LamportClock)
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ok(Waiting, LamportClock) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    lists:map(
+\end_layout
+
+\begin_layout Plain Layout
+
+      fun({F,R}) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+          F ! {ok, R, LamportClock}
+\end_layout
+
+\begin_layout Plain Layout
+
+      end,
+\end_layout
+
+\begin_layout Plain Layout
+
+      Waiting).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+held(Nodes, Waiting, MyLockID, LamportClock) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+    	{request, From, Ref, _, ExtClock} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            LamportClock2 = updateClock(LamportClock, ExtClock),
+\end_layout
+
+\begin_layout Plain Layout
+
+            held(Nodes, [{From, Ref}|Waiting], MyLockID, LamportClock2);
+\end_layout
+
+\begin_layout Plain Layout
+
+        release ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            ok(Waiting, LamportClock),
+\end_layout
+
+\begin_layout Plain Layout
+
+            open(MyLockID, Nodes, LamportClock)
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+resendRequest(From, Refs, MyLockID, LamportClock) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    IsPidPresent  = lists:keymember(From,1,Refs),
+\end_layout
+
+\begin_layout Plain Layout
+
+    IsNamePresent = lists:keymember(process_info(From),1,Refs),
+\end_layout
+
+\begin_layout Plain Layout
+
+    if
+\end_layout
+
+\begin_layout Plain Layout
+
+        IsPidPresent or IsNamePresent->
+\end_layout
+
+\begin_layout Plain Layout
+
+            R = make_ref(),
+\end_layout
+
+\begin_layout Plain Layout
+
+            Refs2 = [R|Refs],
+\end_layout
+
+\begin_layout Plain Layout
+
+            From ! {request, self(), R, MyLockID, LamportClock},
+\end_layout
+
+\begin_layout Plain Layout
+
+            Refs2;
+\end_layout
+
+\begin_layout Plain Layout
+
+        true ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            Refs
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+updateClock(MyClock, ExtClock) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    if
+\end_layout
+
+\begin_layout Plain Layout
+
+        MyClock >= ExtClock ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            NewClock = MyClock + 1;
+\end_layout
+
+\begin_layout Plain Layout
+
+        MyClock < ExtClock ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            NewClock = ExtClock + 1
+\end_layout
+
+\begin_layout Plain Layout
+
+    end,
+\end_layout
+
+\begin_layout Plain Layout
+
+    NewClock.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+To solve the potential problem with multiple 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+request
+\end_layout
+
+\end_inset
+
+ messages being sent without need, that in this case would add a new value
+ to the logical counter of the receiver, the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+resendRequest
+\end_layout
+
+\end_inset
+
+ function was created that just simply test if the PID or the registered
+ name of a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ instance is present on the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Refs
+\end_layout
+
+\end_inset
+
+ lists.
+ If it is present nothing should else should be done, otherwise, a new 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+request
+\end_layout
+
+\end_inset
+
+ should be issued.
+\end_layout
+
+\begin_layout Section
+Evaluation
+\end_layout
+
+\begin_layout Subsection
+lock1
+\end_layout
+
+\begin_layout Standard
+As expected the 
+\series bold
+\emph on
+lock1
+\series default
+\emph default
+ works.
+ Basically, the closer the value of 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Work
+\end_layout
+
+\end_inset
+
+ time was to the deadlock time higher were the possibilities of a withdrawal,
+ though it could be balanced with a bigger 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Sleep
+\end_layout
+
+\end_inset
+
+ time.
+ Since all the decisions were taken based on the queue of each 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ instance, the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+worker
+\end_layout
+
+\end_inset
+
+ instances were only acquiring a lock when the others were either releasing
+ or either giving up to wait for the lock.
+ The 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "tab:lock1-execution-(avg)"
+
+\end_inset
+
+ presents the average values for time to take a lock, the number of locks
+ acquired and number of withdrawals.
+\end_layout
+
+\begin_layout Standard
+\align block
+
+\size footnotesize
+\color black
+\begin_inset Float table
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+\begin_inset Tabular
+<lyxtabular version="3" rows="10" columns="4">
+<features tabularvalignment="middle">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+[
+\series bold
+\emph on
+Sleep
+\series default
+\emph default
+, 
+\series bold
+\emph on
+Work
+\series default
+\emph default
+, 
+\series bold
+\emph on
+Deadlock
+\series default
+\emph default
+]
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\series bold
+\size footnotesize
+\emph on
+\color black
+# locks taken
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\series bold
+\size footnotesize
+\emph on
+\color black
+avg.
+ time (ms)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\series bold
+\size footnotesize
+\emph on
+\color black
+# withdrawal
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+[1000,2000,5000]
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+13,5
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+2277.44
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+[3000,2000,5000]
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+11
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+1325.79
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+[6000,2000,5000]
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+15
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+595.68
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+[1000,1000,5000]
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+30.5
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+1041.86
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+[1000,6000,5000]
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+5
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+3359.9
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+3.5
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+[6000,7000,5000]
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+8.25
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+2411.43
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+4
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+[7000,6000,5000]
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+6.25
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+2132.37
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+1.25
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+[1000,4000,5000]
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+9
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+3285.11
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+3.75
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+[1000,3500,5000]
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+8.75
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+2833.22
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+2.5
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+
+\color black
+\begin_inset Caption
+
+\begin_layout Plain Layout
+
+\series bold
+\emph on
+lock1
+\series default
+\emph default
+ execution
+\size footnotesize
+\color black
+ (avg.
+ value for all the 
+\emph on
+worker
+\emph default
+ instances)
+\begin_inset CommandInset label
+LatexCommand label
+name "tab:lock1-execution-(avg)"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+lock2
+\end_layout
+
+\begin_layout Standard
+For 
+\series bold
+\emph on
+lock2
+\series default
+\emph default
+, if we look at the 
+\emph on
+muty.erl
+\emph default
+ code, we see that statically the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ instances were distributed among the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+worker
+\end_layout
+
+\end_inset
+
+ instances in the following way: 
+\series bold
+\emph on
+John
+\series default
+\emph default
+ with 
+\emph on
+lock#1
+\emph default
+, 
+\series bold
+\emph on
+Ringo
+\series default
+\emph default
+ with 
+\emph on
+lock#2
+\emph default
+, 
+\series bold
+\emph on
+Paul
+\series default
+\emph default
+ with 
+\emph on
+lock#3
+\emph default
+ and 
+\series bold
+\emph on
+George
+\series default
+\emph default
+ with 
+\emph on
+lock#4
+\emph default
+.
+ The 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:lock2-executing"
+
+\end_inset
+
+ shows the execution of 
+\series bold
+\emph on
+lock2
+\series default
+\emph default
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename seminar3/lock2.png
+	scale 35
+
+\end_inset
+
+
+\begin_inset Caption
+
+\begin_layout Plain Layout
+
+\series bold
+\emph on
+lock2
+\series default
+\emph default
+ executing
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:lock2-executing"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+FloatBarrier
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "tab:lock2-execution-(sep)"
+
+\end_inset
+
+ presents the execution with the same values used on the previous table,
+ for 
+\series bold
+\emph on
+lock1
+\series default
+\emph default
+.
+ We can see that for higher values of 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Work
+\end_layout
+
+\end_inset
+
+ time and lower values of 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Sleep
+\end_layout
+
+\end_inset
+
+ time (compared to 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Deadlock
+\end_layout
+
+\end_inset
+
+ time), the system is highly unfair, leading to cases where 
+\series bold
+\emph on
+George
+\series default
+\emph default
+ was withdrawing most of his lock requests.
+ This could be compensated with higher values of 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Sleep
+\end_layout
+
+\end_inset
+
+, but in a real system this would probably not be possible.
+\end_layout
+
+\begin_layout Standard
+\align block
+
+\size footnotesize
+\color black
+\begin_inset Float table
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+\begin_inset Tabular
+<lyxtabular version="3" rows="37" columns="4">
+<features tabularvalignment="middle">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+[
+\series bold
+\emph on
+Sleep
+\series default
+\emph default
+, 
+\series bold
+\emph on
+Work
+\series default
+\emph default
+, 
+\series bold
+\emph on
+Deadlock
+\series default
+\emph default
+]
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="1" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\series bold
+\size footnotesize
+\emph on
+\color black
+# locks taken
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="1" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\series bold
+\size footnotesize
+\emph on
+\color black
+avg.
+ time (ms)
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="1" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\series bold
+\size footnotesize
+\emph on
+\color black
+# withdrawal
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="3" alignment="center" valignment="middle" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+[1000,2000,5000]
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+36
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+823,55
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+33
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+829,36
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+10
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+2045,9
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+8
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+3
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+1319,0
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+13
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="3" alignment="center" valignment="middle" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+[3000,2000,5000]
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+26
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+583,73
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+22
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+847,14
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+16
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+1989,13
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+12
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+1518,67
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+4
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="3" alignment="center" valignment="middle" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+[6000,2000,5000]
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+16
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+505,75
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+14
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+675,43
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+13
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+469,54
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+14
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+501,00
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+1
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="3" alignment="center" valignment="middle" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+[1000,1000,5000]
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+53
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+313,49
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+43
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+501,49
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+27
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+1212,96
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+1
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+17
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+2100,29
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+3
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="3" alignment="center" valignment="middle" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+[1000,6000,5000]
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+12
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+2551,17
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+10
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+2255,0
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+2
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+3
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+3938,67
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+9
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+1
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+0,0
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+12
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="3" alignment="center" valignment="middle" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+[6000,7000,5000]
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+10
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+1535,3
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+1
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+10
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+1369,2
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+1
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+4
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+1500
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+7
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+4
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+1299,5
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+7
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="3" alignment="center" valignment="middle" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+[7000,6000,5000]
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+15
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+1712,73
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+11
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+1659,72
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+3
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+9
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+1381,67
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+5
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+4
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+2099,0
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+9
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="3" alignment="center" valignment="middle" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+[1000,4000,5000]
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+26
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+1821,11
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+21
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+1565,05
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+3
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+14
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+2256,36
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+7
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+6
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+1574,33
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+16
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="3" alignment="center" valignment="middle" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+[1000,3500,5000]
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+42
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+1544,02
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+33
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+2178,64
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+13
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+2533,61
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+16
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+2
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+1429,0
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\color black
+27
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+
+\color black
+\begin_inset Caption
+
+\begin_layout Plain Layout
+
+\series bold
+\emph on
+lock2
+\series default
+\emph default
+ execution
+\size footnotesize
+\color black
+ (
+\series bold
+\emph on
+John
+\series default
+\emph default
+,
+\series bold
+\emph on
+ Ringo
+\series default
+\emph default
+,
+\series bold
+\emph on
+ Paul
+\series default
+\emph default
+,
+\series bold
+\emph on
+ George
+\series default
+\emph default
+ values separately)
+\begin_inset CommandInset label
+LatexCommand label
+name "tab:lock2-execution-(sep)"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The 
+\series bold
+\emph on
+lock2
+\series default
+\emph default
+ had to deal with the possible deadlock condition that could be caused when
+ a lower priority 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ instance, when still on the 
+\series bold
+\emph on
+wait
+\series default
+\emph default
+ state, received a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+request
+\end_layout
+
+\end_inset
+
+ message from a higher priority instance after having received an 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+ok
+\end_layout
+
+\end_inset
+
+ from that same instance.
+ The 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:lock2-possible-deadlock"
+
+\end_inset
+
+ shows this situation.
+ 
+\series bold
+\emph on
+lock#2
+\series default
+\emph default
+ receives a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+take
+\end_layout
+
+\end_inset
+
+ from its 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+work
+\end_layout
+
+\end_inset
+
+ instance and broadcast a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+request
+\end_layout
+
+\end_inset
+
+ message, 
+\series bold
+\emph on
+lock#1
+\series default
+\emph default
+ responds quickly with an 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+ok
+\end_layout
+
+\end_inset
+
+ message, but right after it receives a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+take
+\end_layout
+
+\end_inset
+
+ from its own 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+work
+\end_layout
+
+\end_inset
+
+ instance, broadcasting a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+request
+\end_layout
+
+\end_inset
+
+ too.
+ This time, 
+\series bold
+\emph on
+lock#2
+\series default
+\emph default
+ is still waiting for the others to respond, but as it received a lock request
+ from an instance with higher priority, it's supposed to answer with an
+ 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+ok
+\end_layout
+
+\end_inset
+
+, and to not starve forever waiting it should send another 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+request
+\end_layout
+
+\end_inset
+
+ back to 
+\series bold
+\emph on
+lock#1
+\series default
+\emph default
+.
+ The implementation proposed (and already described) solved this problem.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename seminar3/deadlock_lock2.png
+	scale 35
+
+\end_inset
+
+
+\begin_inset Caption
+
+\begin_layout Plain Layout
+
+\series bold
+\emph on
+lock2
+\series default
+\emph default
+ possible deadlock condition
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:lock2-possible-deadlock"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+lock3
+\end_layout
+
+\begin_layout Standard
+The 
+\series bold
+\emph on
+lock3
+\series default
+\emph default
+ code implemented a fairest locking system, using Lamport logical clocks.
+ The 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:lock3-executing"
+
+\end_inset
+
+ shows a print-screen of this system working.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename seminar3/lock3.png
+	scale 35
+
+\end_inset
+
+
+\begin_inset Caption
+
+\begin_layout Plain Layout
+
+\series bold
+\emph on
+lock3
+\series default
+\emph default
+ executing
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:lock3-executing"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+From 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "tab:lock3-execution-(sep)"
+
+\end_inset
+
+ we can see that this implementation was really the fairest of all.
+ Even for high 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Work
+\end_layout
+
+\end_inset
+
+ time, the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+work
+\end_layout
+
+\end_inset
+
+ instances were giving up waiting for the lock in a more homogeneous way.
+\end_layout
+
+\begin_layout Standard
+\align block
+
+\size footnotesize
+\color black
+\begin_inset Float table
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+\begin_inset Tabular
+<lyxtabular version="3" rows="37" columns="4">
+<features tabularvalignment="middle">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+[
+\series bold
+\emph on
+Sleep
+\series default
+\emph default
+, 
+\series bold
+\emph on
+Work
+\series default
+\emph default
+, 
+\series bold
+\emph on
+Deadlock
+\series default
+\emph default
+]
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="1" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\series bold
+\size footnotesize
+\emph on
+\color black
+# locks taken
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="1" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\series bold
+\size footnotesize
+\emph on
+\color black
+avg.
+ time (ms)
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="1" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\series bold
+\size footnotesize
+\emph on
+\color black
+# withdrawal
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="3" alignment="center" valignment="middle" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+[1000,2000,5000]
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+18
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+2471,05
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+18
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+2172,66
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+1
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+19
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+2229,37
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+20
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+2245,3
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="3" alignment="center" valignment="middle" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+[3000,2000,5000]
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+23
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+1653.08
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+22
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+1678.77
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+21
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+1687,71
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+24
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+1471,88
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="3" alignment="center" valignment="middle" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+[6000,2000,5000]
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+14
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+461,42
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+13
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+691,69
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+12
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+485,25
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+13
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+511,38
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="3" alignment="center" valignment="middle" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+[1000,1000,5000]
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+39
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+997,67
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+38
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+997,63
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+37
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+1042,27
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+39
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+1017,46
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+0
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="3" alignment="center" valignment="middle" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+[1000,6000,5000]
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+9
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+3396,67
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+9
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+10
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+3605,10
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+6
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+8
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+2907,00
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+10
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+9
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+2767,00
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+10
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="3" alignment="center" valignment="middle" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+[6000,7000,5000]
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+14
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+1980,00
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+9
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+13
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+2429,77
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+8
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+14
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+2843,86
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+6
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+13
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+2443,38
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+10
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="3" alignment="center" valignment="middle" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+[7000,6000,5000]
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+8
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+1412,13
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+6
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+9
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+2277,00
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+4
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+12
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+2483,75
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+1
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+10
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+2548,00
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+2
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="3" alignment="center" valignment="middle" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+[1000,4000,5000]
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+12
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+3255,33
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+5
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+12
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+3199,83
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+4
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+10
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+3371,10
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+7
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+14
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+3267,28
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+3
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="3" alignment="center" valignment="middle" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+\color black
+[1000,3500,5000]
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+13
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+2678,23
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+3
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+12
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+2800,23
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+4
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+11
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+3139,73
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+4
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multirow="4" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+14
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+2789,43
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size footnotesize
+2
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+
+\color black
+\begin_inset Caption
+
+\begin_layout Plain Layout
+
+\series bold
+\emph on
+lock3
+\series default
+\emph default
+ execution
+\size footnotesize
+\color black
+ (
+\series bold
+\emph on
+John
+\series default
+\emph default
+,
+\series bold
+\emph on
+ Ringo
+\series default
+\emph default
+,
+\series bold
+\emph on
+ Paul
+\series default
+\emph default
+,
+\series bold
+\emph on
+ George
+\series default
+\emph default
+ values separately)
+\begin_inset CommandInset label
+LatexCommand label
+name "tab:lock3-execution-(sep)"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Open questions
+\end_layout
+
+\begin_layout Standard
+
+\shape italic
+Try to answer all the open questions in the documentation.
+ If possible, do experiments to support your answers.
+\end_layout
+
+\begin_layout Section
+Conclusions
+\end_layout
+
+\begin_layout Standard
+
+\shape italic
+Describe the lessons you have learnt in this seminar, and give your opinion
+ about it.
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset bibtex
+LatexCommand bibtex
+bibfiles "sodx"
+options "plain"
+
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document
