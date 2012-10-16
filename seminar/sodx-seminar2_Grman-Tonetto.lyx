@@ -3287,9 +3287,22 @@ Sleep
 
 \begin_layout Standard
 \align block
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+FloatBarrier
+\end_layout
+
+\end_inset
+
 
 \size footnotesize
 \color black
+
 \begin_inset Float table
 wide false
 sideways false
@@ -5157,6 +5170,22 @@ name "tab:lock2-execution-(sep)"
 \end_inset
 
 
+\size default
+\color inherit
+
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+FloatBarrier
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Standard
@@ -5370,6 +5399,19 @@ lock#1
 \end_layout
 
 \begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+FloatBarrier
+\end_layout
+
+\end_inset
+
+
 \begin_inset Float figure
 wide false
 sideways false
@@ -5410,6 +5452,19 @@ name "fig:lock2-possible-deadlock"
 \end_inset
 
 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+FloatBarrier
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Subsection
@@ -5435,6 +5490,19 @@ reference "fig:lock3-executing"
 \end_layout
 
 \begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+FloatBarrier
+\end_layout
+
+\end_inset
+
+
 \begin_inset Float figure
 wide false
 sideways false
@@ -5470,6 +5538,19 @@ name "fig:lock3-executing"
 \end_inset
 
 
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+FloatBarrier
 \end_layout
 
 \end_inset
@@ -5517,9 +5598,22 @@ work
 
 \begin_layout Standard
 \align block
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+FloatBarrier
+\end_layout
+
+\end_inset
+
 
 \size footnotesize
 \color black
+
 \begin_inset Float table
 wide false
 sideways false
@@ -7287,6 +7381,22 @@ name "tab:lock3-execution-(sep)"
 \end_inset
 
 
+\size default
+\color inherit
+
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+FloatBarrier
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Standard
@@ -7394,11 +7504,297 @@ mutybis.erl
 Open questions
 \end_layout
 
-\begin_layout Standard
+\begin_layout Subsection
+lock1
+\end_layout
 
-\shape italic
-Try to answer all the open questions in the documentation.
- If possible, do experiments to support your answers.
+\begin_layout Itemize
+
+\emph on
+How does this lock implementation perform? What is happening when you increase
+ the risk of a lock conflict? Why? (make tests with different Sleep and
+ Work parameters to answer this).
+ 
+\end_layout
+
+\begin_layout Standard
+As previously described this lock implementation performs well for the predefine
+d environment.
+ When the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Work
+\end_layout
+
+\end_inset
+
+ time increases the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+work
+\end_layout
+
+\end_inset
+
+ instances give up more frequently waiting for the lock.
+ On the other hand, for a high 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Work
+\end_layout
+
+\end_inset
+
+ time value, when the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Sleep
+\end_layout
+
+\end_inset
+
+ time increases the withdrawals decrease.
+\end_layout
+
+\begin_layout Subsection
+lock2
+\end_layout
+
+\begin_layout Itemize
+
+\emph on
+Justify how you guarantee that only one process is in the critical section
+ at any time.
+ Run tests and see how well your solution works with respect to the previous
+ lock.
+ What is the main drawback?
+\end_layout
+
+\begin_layout Standard
+From the 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:lock2-possible-deadlock"
+
+\end_inset
+
+ we explain how this is done.
+ Lower priority instances, that had already received an 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+ok
+\end_layout
+
+\end_inset
+
+ from a higher priority instance, but are still waiting, once they receive
+ a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+request
+\end_layout
+
+\end_inset
+
+ from that lower ID instance (higher priority) it should re-send a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+request
+\end_layout
+
+\end_inset
+
+ message along with the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+ok
+\end_layout
+
+\end_inset
+
+ message.
+ This way only one instance will be in the critical section at any time.
+\end_layout
+
+\begin_layout Standard
+The main drawback is that, since each 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+work
+\end_layout
+
+\end_inset
+
+ instance is statically binded to one 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ instance, that has a unique and statical ID (thus a statical priority),
+ 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+work
+\end_layout
+
+\end_inset
+
+ instances that request a lock for a low priority 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ instance will hardly acquire the lock for any execution time observed.
+\end_layout
+
+\begin_layout Subsection
+lock3
+\end_layout
+
+\begin_layout Itemize
+
+\emph on
+Run tests and compare this version with the former ones.
+ Note that the workers are not involved in the Lamport clock.
+ Could we have a situation where a worker is not given the priority to a
+ lock even if it issued a request to its instance logically before the worker
+ that took the lock?
+\end_layout
+
+\begin_layout Standard
+The tests were done and compared on the previous sessions of this document.
+\end_layout
+
+\begin_layout Standard
+And yes, we could have a situation where a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+work
+\end_layout
+
+\end_inset
+
+ instance is not given priority to a lock even if it issued a request to
+ its 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lock
+\end_layout
+
+\end_inset
+
+ instance logically before the one that actually took the lock.
+\end_layout
+
+\begin_layout Standard
+It can be explained by the simple fact that it's not guaranteed that a message
+ issued in the time 
+\begin_inset Formula $t_{1}$
+\end_inset
+
+by a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+work
+\end_layout
+
+\end_inset
+
+ instance will arrive to the lock system before a request sent in a time
+ 
+\begin_inset Formula $t_{2}$
+\end_inset
+
+ (where 
+\begin_inset Formula $t_{1}<t_{2}$
+\end_inset
+
+).
+ A solution for this would be to use a synchronized clock from where all
+ the messages sent inside the system would have a timestamp based on this
+ clock, then these timestamps would be used to fairly decide which message
+ was sent first and to who the lock actually should be granted.
 \end_layout
 
 \begin_layout Section
@@ -7406,10 +7802,23 @@ Conclusions
 \end_layout
 
 \begin_layout Standard
+In this seminar we implemented three different versions of a distributed
+ mutual-exclusion lock system.
+ We could see that by simply using statically assigned priority could lead
+ to a highly unfair set and that using Lamport logical clocks we can easily
+ implement a fair distributed lock system, even though these implementations
+ bring also some complexity and potential deadlock conditions if not properly
+ designed.
+\end_layout
 
-\shape italic
-Describe the lessons you have learnt in this seminar, and give your opinion
- about it.
+\begin_layout Standard
+Even being a good proposal, logical clocks don't solve all the problems
+ in a distributed system, and therefore a synchronized clock could be really
+ helpful to solve some issues that can't be solved with the first solution.
+ The problem is that it's really hard to deploy and maintain distributed
+ synchronized clocks, specially when you have geographically distributed
+ systems where the network latency is a fixed barrier impossible to leave
+ behind.
 \end_layout
 
 \begin_layout Standard
