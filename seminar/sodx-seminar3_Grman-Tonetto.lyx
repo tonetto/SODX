@@ -1,0 +1,2679 @@
+#LyX 2.0 created this file. For more info see http://www.lyx.org/
+\lyxformat 413
+\begin_document
+\begin_header
+\textclass article
+\begin_preamble
+% Very simple template for SODX lab reports. Most common packages are already included.
+
+% Change according your file encoding
+\usepackage{url}
+\usepackage{placeins}
+
+%opening
+\title{Seminar Report: Groupy}
+\author{Peter Grman, Leonardo Tonetto}
+\date{\today{}}
+\end_preamble
+\use_default_options false
+\maintain_unincluded_children false
+\language english
+\language_package none
+\inputencoding utf8
+\fontencoding default
+\font_roman default
+\font_sans default
+\font_typewriter default
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize 11
+\spacing single
+\use_hyperref false
+\papersize a4paper
+\use_geometry false
+\use_amsmath 1
+\use_esint 1
+\use_mhchem 0
+\use_mathdots 0
+\cite_engine basic
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\use_refstyle 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Standard
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+
+\backslash
+maketitle
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Introduction
+\end_layout
+
+\begin_layout Standard
+In this seminar we worked on the development of a 
+\emph on
+\bar under
+g
+\emph default
+\bar default
+roup 
+\emph on
+\bar under
+m
+\emph default
+\bar default
+embership 
+\emph on
+\bar under
+s
+\emph default
+\bar default
+ervice that provided atomic multicast.
+ The system could be divided into two layers:
+\end_layout
+
+\begin_layout Itemize
+The 
+\bar under
+application layer
+\bar default
+: corresponding to 
+\series bold
+\emph on
+Workers
+\series default
+\emph default
+ that in our case were represented by colored GUI windows frames.
+\end_layout
+
+\begin_layout Itemize
+The 
+\bar under
+group layer
+\bar default
+: where members would be divided into a single 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ and multiple 
+\series bold
+\emph on
+Slaves
+\series default
+\emph default
+.
+\end_layout
+
+\begin_layout Standard
+The 
+\series bold
+\emph on
+Workers
+\series default
+\emph default
+ can generate new messages, that in our case are new colors to be set to
+ the GUI of the other members of the application layer, and these messages
+ are multicasted through the group layer by the current 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+.
+ Some assumption had to be made during the development of this session so
+ that the code could stay simple and easy to read and work on.
+\end_layout
+
+\begin_layout Standard
+Of course that new 
+\series bold
+\emph on
+Workers
+\series default
+\emph default
+ could join the application layer at any time as well as they could also
+ fail for whatever reason.
+ The first and simplest implementation can't handle group members failures
+ but this is tackled in the following versions.
+\end_layout
+
+\begin_layout Standard
+Each member of a group layer should be able to multicast messages to the
+ members of that group.
+ We can divide the time into 
+\series bold
+\emph on
+views
+\series default
+\emph default
+.
+ Each 
+\series bold
+\emph on
+view
+\series default
+\emph default
+ describes what are the members that are present on a group at that specific
+ moment.
+ 
+\series bold
+\emph on
+Groups
+\series default
+\emph default
+ are identified by its 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+, so multiple 
+\series bold
+\emph on
+groups
+\series default
+\emph default
+ can be created by creating new 
+\series bold
+\emph on
+Leaders
+\series default
+\emph default
+ and later on adding new members (that could only be 
+\series bold
+\emph on
+slaves
+\series default
+\emph default
+ now) to follow that member.
+\end_layout
+
+\begin_layout Standard
+And finally, the communication is divided into views and messages should
+ be delivered in a view.
+ We had to guarantee FIFO order and total order for all the multicasted
+ messages that were sent by a healthy member.
+ The system is asynchronous and we are not acknowledging messages.
+ And whenever a 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ fails an election procedure should take place to select the new one.
+\end_layout
+
+\begin_layout Section
+System overview
+\end_layout
+
+\begin_layout Standard
+For this seminar we had the code divided into multiple modules: 
+\series bold
+worker
+\series default
+, 
+\series bold
+gui
+\series default
+, three different implementations of gms (
+\series bold
+gms1
+\series default
+, 
+\series bold
+gms2
+\series default
+ and 
+\series bold
+gms3
+\series default
+) and 
+\series bold
+groupy
+\series default
+.
+ Each one is described next.
+\end_layout
+
+\begin_layout Subsection
+worker
+\end_layout
+
+\begin_layout Standard
+This module is responsible for creating a 
+\series bold
+\emph on
+Worker
+\series default
+\emph default
+, that in our case represents a member of the application layer.
+ Each new member when created, via the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+start()
+\end_layout
+
+\end_inset
+
+ method, creates a new member of the group layer that would be linked to
+ it, via the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+spawn_link()
+\end_layout
+
+\end_inset
+
+ function.
+\end_layout
+
+\begin_layout Standard
+The implementation was simplified so that there are two versions of 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+start
+\end_layout
+
+\end_inset
+
+:
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+start/4
+\end_layout
+
+\end_inset
+
+: should be used when creating the first new member of a group, that will
+ always be the first 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+start/5
+\end_layout
+
+\end_inset
+
+: should be used when creating subsequent members of a group that would
+ have the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ created with the other version of this function as an argument.
+\end_layout
+
+\begin_layout Standard
+Although there are two versions for this function on the 
+\series bold
+worker
+\series default
+ module, the 
+\series bold
+\emph on
+Workers
+\series default
+\emph default
+ are not aware of the role their corresponding group members have in the
+ group layer.
+\end_layout
+
+\begin_layout Standard
+A 
+\series bold
+\emph on
+Worker
+\series default
+\emph default
+ when initializing to have its group member to be the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ will simply decide for the first color, update its GUI and wait for messages
+ from its group member.
+\end_layout
+
+\begin_layout Standard
+For all the subsequent 
+\series bold
+\emph on
+Workers
+\series default
+\emph default
+ created that will have its group member joining an existing group, it will
+ wait for an 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{ok, Color}
+\end_layout
+
+\end_inset
+
+ message from its group member where 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Color
+\end_layout
+
+\end_inset
+
+ is used to update the GUI with the first color.
+\end_layout
+
+\begin_layout Standard
+In both of the previous cases, after the initialization is complete the
+ 
+\series bold
+\emph on
+Workers
+\series default
+\emph default
+ enter the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+worker
+\end_layout
+
+\end_inset
+
+ state, where messages from the group member are handled as well as a new
+ color is chosen after a timeout waiting for new messages.
+ This new color will be the multicasted message to all the application layer
+ members that are in the same group.
+\end_layout
+
+\begin_layout Standard
+From the group members a 
+\series bold
+\emph on
+Worker
+\series default
+\emph default
+ can receive:
+\end_layout
+
+\begin_layout Itemize
+a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{deliver, {_,N}}
+\end_layout
+
+\end_inset
+
+ message that contains the new color to be set to the GUI.
+\end_layout
+
+\begin_layout Itemize
+a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{join, Peer}
+\end_layout
+
+\end_inset
+
+ message that is a message from a new application trying to join the group.
+ This message is immediately sent to the group member of that 
+\series bold
+\emph on
+Worker
+\series default
+\emph default
+.
+\end_layout
+
+\begin_layout Itemize
+and a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+request
+\end_layout
+
+\end_inset
+
+ that corresponds to a new member trying to join the group, which is immediately
+ answered with an 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{ok, Color}
+\end_layout
+
+\end_inset
+
+, where 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Color
+\end_layout
+
+\end_inset
+
+ is the current state of the system.
+ It's important to note that this message will only be received by an applicatio
+n that has it's group member as the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+.
+\end_layout
+
+\begin_layout Subsection
+gui
+\end_layout
+
+\begin_layout Standard
+It's simply the module that handles the messages received by it's corresponding
+ 
+\series bold
+\emph on
+Worker
+\series default
+\emph default
+ application and display colors to the shown.
+ Please refer to the source code provided with this document for further
+ information.
+\end_layout
+
+\begin_layout Subsection
+gms1
+\end_layout
+
+\begin_layout Standard
+This is the basic implementation of the 
+\series bold
+\emph on
+g
+\series default
+\emph default
+roup 
+\series bold
+\emph on
+m
+\series default
+\emph default
+embership 
+\series bold
+\emph on
+s
+\series default
+\emph default
+ervice.
+ As well as for the 
+\series bold
+\emph on
+worker
+\series default
+\emph default
+ module, this one has two different sets of functions to initialize a group
+ member.
+ Note that 
+\series bold
+\emph on
+Master
+\series default
+\emph default
+ is the application to which a group member is binded to, a 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ and a 
+\series bold
+\emph on
+Slave
+\series default
+\emph default
+ are possible roles for a group member.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+start/1
+\end_layout
+
+\end_inset
+
+: which should be used by a member that should become the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ of the group.
+ It simply calls the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+init/2
+\end_layout
+
+\end_inset
+
+ function that will bring it to the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+leader
+\end_layout
+
+\end_inset
+
+ state.
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+lstparams "basicstyle={\scriptsize\ttfamily},language=erlang"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+start(Id) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    Self = self(),
+\end_layout
+
+\begin_layout Plain Layout
+
+    spawn_link(fun()-> init(Id, Self) end).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+init(Id, Master) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    leader(Id, Master, []).
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+start/2
+\end_layout
+
+\end_inset
+
+: which should be used for subsequent members joining the system as 
+\series bold
+\emph on
+Slaves
+\series default
+\emph default
+.
+ This version calls 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+init/3
+\end_layout
+
+\end_inset
+
+ that contains the PID of the current 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ of the group to whom a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{join, Self}
+\end_layout
+
+\end_inset
+
+ message is sent and a response with the current view and the state of the
+ system is returned.
+ Finally the member enters the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+slave
+\end_layout
+
+\end_inset
+
+ state.
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+lstparams "basicstyle={\scriptsize\ttfamily},language=erlang"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+start(Id, Grp) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    Self = self(),
+\end_layout
+
+\begin_layout Plain Layout
+
+    spawn_link(fun()-> init(Id, Grp, Self) end).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+init(Id, Grp, Master) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    Self = self(),
+\end_layout
+
+\begin_layout Plain Layout
+
+    Grp ! {join, Self},
+\end_layout
+
+\begin_layout Plain Layout
+
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+        {view, State, Leader, Peers} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            Master ! {ok, State},
+\end_layout
+
+\begin_layout Plain Layout
+
+            slave(Id, Master, Leader, Peers)
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+A group that is the current 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ will wait for a set of messages and will be the responsible for multicasting
+ the messages received by the other members of the group (
+\series bold
+\emph on
+Slaves
+\series default
+\emph default
+ in this case).
+ Here are the messages it will expect to receive:
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{mcast, Msg}
+\end_layout
+
+\end_inset
+
+: that is a message to be multicasted to all the members of the group, and
+ of course to its 
+\series bold
+\emph on
+Master
+\series default
+\emph default
+.
+ As explained before, this message contains the new color proposed by any
+ member of the application layer.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{join, Peer}
+\end_layout
+
+\end_inset
+
+: a new member is trying to join the group.
+ So a message is sent from the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ to its 
+\series bold
+\emph on
+Master
+\series default
+\emph default
+, how's actually taking the decision of acceptance.
+ At this point the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ change to the
+ 
+\lang english
+
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+joining
+\end_layout
+
+\end_inset
+
+ state.
+ At this state it will wait for an 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+ok
+\end_layout
+
+\end_inset
+
+ message from the the 
+\series bold
+\emph on
+Master
+\series default
+\emph default
+, which we already saw, will simply do that without arguing, it will then
+ broadcast a new view for the system that will contain the new accepted
+ member.
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+lstparams "basicstyle={\scriptsize\ttfamily},language=erlang"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+leader(Id, Master, Peers) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+        {mcast, Msg} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            bcast(Id, {msg, Msg}, Peers),
+\end_layout
+
+\begin_layout Plain Layout
+
+            Master ! {deliver, Msg},
+\end_layout
+
+\begin_layout Plain Layout
+
+            leader(Id, Master, Peers);
+\end_layout
+
+\begin_layout Plain Layout
+
+        {join, Peer} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            Master ! request,
+\end_layout
+
+\begin_layout Plain Layout
+
+            joining(Id, Master, Peer, Peers);
+\end_layout
+
+\begin_layout Plain Layout
+
+        stop ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            ok;
+\end_layout
+
+\begin_layout Plain Layout
+
+        Error ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            io:format("gms ~w: leader, strange message ~w~n", [Id, Error])
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+joining(Id, Master, Peer, Peers) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+        {ok, State} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            Peers2 = lists:append(Peers, [Peer]),
+\end_layout
+
+\begin_layout Plain Layout
+
+            bcast(Id, {view, State, self(), Peers2}, Peers2),
+\end_layout
+
+\begin_layout Plain Layout
+
+            leader(Id, Master, Peers2);
+\end_layout
+
+\begin_layout Plain Layout
+
+        stop ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            ok
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+bcast(_, Msg, Nodes) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    lists:foreach(fun(Node) -> Node ! Msg end, Nodes).
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+On the other hand, as a 
+\series bold
+\emph on
+Slave
+\series default
+\emph default
+ a member group will accept the following messages:
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{mcast, Msg}
+\end_layout
+
+\end_inset
+
+: a message received from the 
+\series bold
+\emph on
+Master
+\series default
+\emph default
+ that is forwarded to the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ to be multicasted.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{join, Peer}
+\end_layout
+
+\end_inset
+
+: a message received by a new member trying to join the group that is forwarded
+ to the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{msg, Msg}
+\end_layout
+
+\end_inset
+
+: a multicasted message received from the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ that is sent to the 
+\series bold
+\emph on
+Master
+\series default
+\emph default
+, containing the new color to be set to the GUI.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{view, _, _, View}
+\end_layout
+
+\end_inset
+
+: a new view of the system, received from the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+, that basically contains the list of the new members of the group.
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+lstparams "basicstyle={\scriptsize\ttfamily},language=erlang"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+slave(Id, Master, Leader, Peers) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+        {mcast, Msg} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            Leader ! {mcast, Msg},
+\end_layout
+
+\begin_layout Plain Layout
+
+            slave(Id, Master, Leader,Peers);
+\end_layout
+
+\begin_layout Plain Layout
+
+        {join, Peer} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            Leader ! {join, Peer},
+\end_layout
+
+\begin_layout Plain Layout
+
+            slave(Id, Master, Leader,Peers);
+\end_layout
+
+\begin_layout Plain Layout
+
+        {msg, Msg} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            Master ! {deliver, Msg},
+\end_layout
+
+\begin_layout Plain Layout
+
+            slave(Id, Master, Leader,Peers);
+\end_layout
+
+\begin_layout Plain Layout
+
+        {view, _, _, View} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            slave(Id, Master, Leader,View);
+\end_layout
+
+\begin_layout Plain Layout
+
+        stop ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            ok;
+\end_layout
+
+\begin_layout Plain Layout
+
+        Error ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            io:format("gms ~w: slave, strange message ~w~n", [Id, Error])
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+This implementation had sever limitations that will be discussed later,
+ like it did not support the failure of the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ in any situation and it was assumed that the messages had to be delivered
+ in order by the network.
+\end_layout
+
+\begin_layout Subsection
+gms2 - Failure detectors & Missing messages
+\end_layout
+
+\begin_layout Standard
+This implementation added some gradual improvements to the system by detecting
+ failures on the existing processes and calling new elections for every
+ 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ failure.
+ Many assumptions were made in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "emdc_sodx3"
+
+\end_inset
+
+ to make this implementation simpler.
+\end_layout
+
+\begin_layout Standard
+The 
+\series bold
+\emph on
+Slave
+\series default
+\emph default
+ processes will now monitor the exit messages of the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ sent by the Erlang environment using the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+erlang:monitor/2
+\end_layout
+
+\end_inset
+
+ function and monitoring the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{'DOWN',...}
+\end_layout
+
+\end_inset
+
+ message from the system.
+ When a 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ is down, an election should take place so that an existing member of the
+ group can assume this position.
+\end_layout
+
+\begin_layout Standard
+This selection is done basically by picking up the first member of the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Peers
+\end_layout
+
+\end_inset
+
+ list kept by all the members and always updated with a new view message.
+ So, if the member is the first in the list, it knows that it's the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ and all the others will update their 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Peers
+\end_layout
+
+\end_inset
+
+ list along with the new 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ as well.
+\end_layout
+
+\begin_layout Standard
+Since now we take care that nodes can crash we have a timeout to inform
+ members that are trying to join the group that the node they are trying
+ to contact is no longer there.
+ The code up to this point is sent along with this document and has the
+ name 
+\emph on
+gms2_2.erl
+\emph default
+, to differentiate it from the actual final version 
+\emph on
+gms2.erl
+\emph default
+.
+ Tests will be done with this code as requested at page 8 of 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "emdc_sodx3"
+
+\end_inset
+
+ and the results are on the next sections of this document.
+\end_layout
+
+\begin_layout Standard
+A constant 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+arghh
+\end_layout
+
+\end_inset
+
+ was defined to force some random failures on the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ while broadcasting a message (via the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+bcast
+\end_layout
+
+\end_inset
+
+ function).
+ In a chance that is 1 out of 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+arghh
+\end_layout
+
+\end_inset
+
+ the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ can now crash and leave its 
+\series bold
+\emph on
+Slaves
+\series default
+\emph default
+ without any explicit warning, forcing them now to call for an election.
+\end_layout
+
+\begin_layout Standard
+The final modified code for 
+\emph on
+gms2.erl
+\series bold
+\emph default
+ 
+\series default
+is like the following (the diff from the original 
+\emph on
+gms1.erl
+\emph default
+ only
+\emph on
+)
+\emph default
+:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+lstparams "basicstyle={\scriptsize\ttfamily},language=erlang"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+-module(gms2).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+-define(arghh, 100).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+start(Id) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    Rnd = random:uniform(100),
+\end_layout
+
+\begin_layout Plain Layout
+
+    Self = self(),
+\end_layout
+
+\begin_layout Plain Layout
+
+    spawn_link(fun()-> init(Id, Rnd, Self) end).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+init(Id, Rnd, Master) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    ?DBG("I'm the leader!"),
+\end_layout
+
+\begin_layout Plain Layout
+
+    random:seed(Rnd, Rnd, Rnd),
+\end_layout
+
+\begin_layout Plain Layout
+
+    leader(Id, Master, []).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+start(Id, Grp) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    Rnd = random:uniform(100),
+\end_layout
+
+\begin_layout Plain Layout
+
+    Self = self(),
+\end_layout
+
+\begin_layout Plain Layout
+
+    spawn_link(fun()->init(Id, Grp, Rnd, Self) end).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+init(Id, Grp, Rnd, Master) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    ?DBG("I'm a Slave!"),
+\end_layout
+
+\begin_layout Plain Layout
+
+    random:seed(Rnd, Rnd, Rnd),
+\end_layout
+
+\begin_layout Plain Layout
+
+    Self = self(),
+\end_layout
+
+\begin_layout Plain Layout
+
+    Grp ! {join, Self},
+\end_layout
+
+\begin_layout Plain Layout
+
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+        {view, State, Leader, Peers} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            erlang:monitor(process, Leader),
+\end_layout
+
+\begin_layout Plain Layout
+
+            Master ! {ok, State},
+\end_layout
+
+\begin_layout Plain Layout
+
+            slave(Id, Master, Leader, Peers)
+\end_layout
+
+\begin_layout Plain Layout
+
+    after 1000 ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            Master ! {error, "no reply from leader"}
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+slave(Id, Master, Leader, Peers) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+        (...)
+\end_layout
+
+\begin_layout Plain Layout
+
+        {'DOWN', _Ref, process, Leader, _Reason} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            ?DBG("The leader is dead!"),
+\end_layout
+
+\begin_layout Plain Layout
+
+            election(Id, Master, Peers);
+\end_layout
+
+\begin_layout Plain Layout
+
+        (...)
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+(...)
+\end_layout
+
+\begin_layout Plain Layout
+
+bcast(Id, Msg, Nodes) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    lists:foreach(fun(Node) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+                          Node ! Msg,
+\end_layout
+
+\begin_layout Plain Layout
+
+                          crash(Id)
+\end_layout
+
+\begin_layout Plain Layout
+
+                  end,
+\end_layout
+
+\begin_layout Plain Layout
+
+                  Nodes).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+crash(Id) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    case random:uniform(?arghh) of
+\end_layout
+
+\begin_layout Plain Layout
+
+        ?arghh ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            io:format("leader ~w: crash~n", [Id]),
+\end_layout
+
+\begin_layout Plain Layout
+
+            exit(no_luck);
+\end_layout
+
+\begin_layout Plain Layout
+
+        _ ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            ok
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+election(Id, Master, [Leader|Rest]) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    if
+\end_layout
+
+\begin_layout Plain Layout
+
+        Leader == self() ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            ?DBG("I'm the new Leader!"),
+\end_layout
+
+\begin_layout Plain Layout
+
+            leader(Id, Master, Rest);
+\end_layout
+
+\begin_layout Plain Layout
+
+        true ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            ?DBG("New Leader elected!"),
+\end_layout
+
+\begin_layout Plain Layout
+
+            erlang:monitor(process, Leader),
+\end_layout
+
+\begin_layout Plain Layout
+
+            slave(Id, Master, Leader, Rest)
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Please refer to the source code for the definition of 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+DBG
+\end_layout
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+This code will be better evaluated in the next section of this document
+ but we could see easily from a simple execution that after the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ failed, some nodes went out of synchronization with the rest of the group.
+\end_layout
+
+\begin_layout Subsection
+gm3 - Reliable multicast
+\end_layout
+
+\begin_layout Standard
+This final version of the code tackled the problem by replacing the basic
+ multicaster with a reliable one.
+ For this, all the 
+\series bold
+\emph on
+Slave
+\series default
+\emph default
+ member groups stored a copy of the last message received from the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ so that, in case of an election, the new 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ can now broadcast again the last message to ensure that all the members
+ received it.
+ Some more assumptions of reliability were made at 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "emdc_sodx3"
+
+\end_inset
+
+ to simplify the implementation.
+\end_layout
+
+\begin_layout Standard
+To avoid receiving doublets of messages all the information exchanged between
+ the group members will now have a unique ID that will be basically a counter
+ updated by the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ on every new multicasted message.
+ So for that, the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{msg, ...}
+\end_layout
+
+\end_inset
+
+ and the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{view,...}
+\end_layout
+
+\end_inset
+
+ messages will now carry this message ID as well as the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+slave
+\end_layout
+
+\end_inset
+
+, 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+election
+\end_layout
+
+\end_inset
+
+ and 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+leader
+\end_layout
+
+\end_inset
+
+ functions were modified so that 
+\series bold
+\emph on
+Slaves
+\series default
+\emph default
+ and 
+\series bold
+\emph on
+Leaders
+\series default
+\emph default
+ can keep track of these informations.
+\end_layout
+
+\begin_layout Standard
+The final code would look like the following (the diff from
+\emph on
+ gms2.erl
+\emph default
+) :
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+lstparams "basicstyle={\scriptsize\ttfamily},language=erlang"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+-module(gms3).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+(...)
+\end_layout
+
+\begin_layout Plain Layout
+
+init(Id, Rnd, Master) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    ?DBG("I'm the leader!"),
+\end_layout
+
+\begin_layout Plain Layout
+
+    random:seed(Rnd, Rnd, Rnd),
+\end_layout
+
+\begin_layout Plain Layout
+
+    leader(Id, Master, 0, []).
+\end_layout
+
+\begin_layout Plain Layout
+
+(...)
+\end_layout
+
+\begin_layout Plain Layout
+
+init(Id, Grp, Rnd, Master) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    ?DBG("I'm a Slave!"),
+\end_layout
+
+\begin_layout Plain Layout
+
+    random:seed(Rnd, Rnd, Rnd),
+\end_layout
+
+\begin_layout Plain Layout
+
+    Self = self(),
+\end_layout
+
+\begin_layout Plain Layout
+
+    Grp ! {join, Self},
+\end_layout
+
+\begin_layout Plain Layout
+
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+        {view, N, State, Leader, Peers} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            Last = {view, N, State, Leader, Peers},
+\end_layout
+
+\begin_layout Plain Layout
+
+            erlang:monitor(process, Leader),
+\end_layout
+
+\begin_layout Plain Layout
+
+            Master ! {ok, State},
+\end_layout
+
+\begin_layout Plain Layout
+
+            slave(Id, Master, Leader, N, Last, Peers)
+\end_layout
+
+\begin_layout Plain Layout
+
+    after 1000 ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            ?DBG("timeout waiting for the Leader!"),
+\end_layout
+
+\begin_layout Plain Layout
+
+            Master ! {error, "no reply from leader"}
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+slave(Id, Master, Leader, N, Last, Peers) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+        {mcast, Msg} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            Leader ! {mcast, Msg},
+\end_layout
+
+\begin_layout Plain Layout
+
+            slave(Id, Master, Leader, N, Last, Peers);
+\end_layout
+
+\begin_layout Plain Layout
+
+        {join, Peer} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            Leader ! {join, Peer},
+\end_layout
+
+\begin_layout Plain Layout
+
+            slave(Id, Master, Leader, N, Last, Peers);
+\end_layout
+
+\begin_layout Plain Layout
+
+        {msg, I, _Msg} when I =< N ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            ?DBG("Receiving a message that I already had!"),
+\end_layout
+
+\begin_layout Plain Layout
+
+            slave(Id, Master, Leader, N, Last, Peers);
+\end_layout
+
+\begin_layout Plain Layout
+
+        {msg, I, Msg} when I > N->
+\end_layout
+
+\begin_layout Plain Layout
+
+            Last2 = {msg, I, Msg},
+\end_layout
+
+\begin_layout Plain Layout
+
+            Master ! {deliver, Msg},
+\end_layout
+
+\begin_layout Plain Layout
+
+            slave(Id, Master, Leader, I, Last2, Peers);
+\end_layout
+
+\begin_layout Plain Layout
+
+        {view, I, _, _, View} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            Last2 = {view, I, [], [], View},
+\end_layout
+
+\begin_layout Plain Layout
+
+            slave(Id, Master, Leader, I, Last2, View);
+\end_layout
+
+\begin_layout Plain Layout
+
+        {'DOWN', _Ref, process, Leader, _Reason} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            ?DBG("The leader is dead!"),
+\end_layout
+
+\begin_layout Plain Layout
+
+            io:format("[DEBUG] ~w: My last N was ~w~n", [self(), N]),
+\end_layout
+
+\begin_layout Plain Layout
+
+            election(Id, Master, N, Last, Peers);
+\end_layout
+
+\begin_layout Plain Layout
+
+        stop ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            ok;
+\end_layout
+
+\begin_layout Plain Layout
+
+        Error ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            io:format("gms ~w: slave, strange message ~w~n", [Id, Error])
+     end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+leader(Id, Master, N, Peers) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+        {mcast, Msg} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            bcast(Id, {msg, N+1, Msg}, Peers),
+\end_layout
+
+\begin_layout Plain Layout
+
+            Master ! {deliver, Msg},
+\end_layout
+
+\begin_layout Plain Layout
+
+            leader(Id, Master, N+1, Peers);
+\end_layout
+
+\begin_layout Plain Layout
+
+        {join, Peer} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            Master ! request,
+\end_layout
+
+\begin_layout Plain Layout
+
+            joining(Id, Master, Peer, N, Peers);
+\end_layout
+
+\begin_layout Plain Layout
+
+        stop ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            ok;
+\end_layout
+
+\begin_layout Plain Layout
+
+        Error ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            io:format("gms ~w: leader, strange message ~w~n", [Id, Error])
+     end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+joining(Id, Master, Peer, N, Peers) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+        {ok, State} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            Peers2 = lists:append(Peers, [Peer]),
+\end_layout
+
+\begin_layout Plain Layout
+
+            bcast(Id, {view, N+1, State, self(), Peers2}, Peers2),
+\end_layout
+
+\begin_layout Plain Layout
+
+            leader(Id, Master, N+1, Peers2);
+\end_layout
+
+\begin_layout Plain Layout
+
+        stop ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            ok
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+(...)
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+election(Id, Master, N, Last, [Leader|Rest]) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    if
+\end_layout
+
+\begin_layout Plain Layout
+
+        Leader == self() ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            ?DBG("I'm the new Leader!"),
+\end_layout
+
+\begin_layout Plain Layout
+
+            bcast(Id, Last, Rest),
+\end_layout
+
+\begin_layout Plain Layout
+
+            leader(Id, Master, N, Rest);
+\end_layout
+
+\begin_layout Plain Layout
+
+        true ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            ?DBG("New Leader elected!"),
+\end_layout
+
+\begin_layout Plain Layout
+
+            erlang:monitor(process, Leader),
+\end_layout
+
+\begin_layout Plain Layout
+
+            slave(Id, Master, Leader, N, Last, Rest)
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Here, the 
+\series bold
+\emph on
+Slaves
+\series default
+\emph default
+ are discarding messages that they have already received by simply checking
+ the message ID with their own counter.
+ This version worked on a simple environment test and further testings are
+ discussed later.
+\end_layout
+
+\begin_layout Subsection
+groupy
+\end_layout
+
+\begin_layout Standard
+This module simply initiate and terminate groups of members calling the
+ 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+worker:start()
+\end_layout
+
+\end_inset
+
+ function that was already described.
+ For tests using multiple groups and multiple members being added at different
+ times, new versions of this code were created and are following this document.
+\end_layout
+
+\begin_layout Section
+Evaluation
+\end_layout
+
+\begin_layout Standard
+First, note that for 
+\emph on
+gms2.erl
+\emph default
+ and 
+\emph on
+gms3.erl
+\emph default
+ a preprocessor macro was created (
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+DBG
+\end_layout
+
+\end_inset
+
+).
+ To activate this macro and have a more verbose execution, please compile
+ the code using the following command as an example:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+lstparams "basicstyle={\scriptsize\ttfamily},language=erlang"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+$ erlc -Ddebug *.erl
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Following all the assumptions made for this system, the three implementations
+ work as expected, each one with its expected behavior to an event, like
+ failures and multicasted messages.
+\end_layout
+
+\begin_layout Subsection
+gms1
+\end_layout
+
+\begin_layout Standard
+
+\end_layout
+
+\begin_layout Section
+Open questions
+\end_layout
+
+\begin_layout Standard
+
+\shape italic
+Try to answer all the open questions in the documentation.
+ If possible, do experiments to support your answers.
+\end_layout
+
+\begin_layout Section
+Conclusions
+\end_layout
+
+\begin_layout Standard
+
+\shape italic
+Describe the lessons you have learnt in this seminar, and give your opinion
+ about it.
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset bibtex
+LatexCommand bibtex
+bibfiles "sodx"
+options "plain"
+
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document
