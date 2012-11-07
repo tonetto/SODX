@@ -36,6 +36,7 @@
 \output_sync 0
 \bibtex_command default
 \index_command default
+\float_placement H
 \paperfontsize 11
 \spacing single
 \use_hyperref false
@@ -960,10 +961,7 @@ Master
 Leader
 \series default
 \emph default
- change to the
- 
-\lang english
-
+ change to the 
 \begin_inset listings
 lstparams "basicstyle={\ttfamily},language=erlang"
 inline true
@@ -1493,7 +1491,7 @@ Since now we take care that nodes can crash we have a timeout to inform
  The code up to this point is sent along with this document and has the
  name 
 \emph on
-gms2_2.erl
+gms2_1.erl
 \emph default
 , to differentiate it from the actual final version 
 \emph on
@@ -2639,7 +2637,769 @@ gms1
 \end_layout
 
 \begin_layout Standard
+This implementation works with its limitations.
+ If the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ doesn't fail, the nodes are coordinated.
+ Although if it fails the 
+\series bold
+\emph on
+Slaves
+\series default
+\emph default
+ just simply 
+\emph on
+hang
+\emph default
+ as zombies without a node to multicast the messages with new values of
+ colors.
+ The 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:gms1.erl-working-fine"
 
+\end_inset
+
+ shows the execution of this version of the code.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename seminar3_Groupy/gms1_ok.png
+	lyxscale 85
+	scale 45
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+
+\emph on
+gms1.erl
+\emph default
+ working fine with a 
+\series bold
+\emph on
+Leader
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:gms1.erl-working-fine"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+But we can easily see that when the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ fails, the 
+\series bold
+\emph on
+Slaves
+\series default
+\emph default
+ have nowhere to go.
+ The 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:gms1.erl-fails"
+
+\end_inset
+
+ shows the 
+\series bold
+\emph on
+Slaves
+\series default
+\emph default
+ stuck in a state because of a forced 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+stop
+\end_layout
+
+\end_inset
+
+ message sent to process 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+a
+\end_layout
+
+\end_inset
+
+ (the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ at that moment).
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename seminar3_Groupy/gms1_error.png
+	lyxscale 85
+	scale 45
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+
+\emph on
+gms1.erl
+\emph default
+ when the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ fails
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:gms1.erl-fails"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+We can also create multiple groups by creating new 
+\series bold
+\emph on
+Leaders
+\series default
+\emph default
+ and assigning new 
+\series bold
+\emph on
+Slaves
+\series default
+\emph default
+ for them.
+ The 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:gms1.erl-two-groups"
+
+\end_inset
+
+ shows an image of two groups created where even on the second group the
+ last member to join asks another 
+\series bold
+\emph on
+Slave
+\series default
+\emph default
+ the possibility to join.
+ It all works as expected.
+ The source code of the modified module for this experiment is called 
+\series bold
+\emph on
+groupybis.erl
+\series default
+\emph default
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename seminar3_Groupy/gms1_bis.png
+	lyxscale 85
+	scale 45
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+
+\emph on
+gms1.erl
+\emph default
+ with two groups.
+ 
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:gms1.erl-two-groups"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+gms2
+\end_layout
+
+\begin_layout Standard
+As mentioned before, the source code for this part was divided into two
+ versions: 
+\emph on
+gms2_1.erl
+\emph default
+ that contain the modifications proposed by the subsection 3.1 of 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "emdc_sodx3"
+
+\end_inset
+
+ and 
+\emph on
+gms2.erl
+\emph default
+ that also includes the modifications proposed by subsection 3.2 of 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "emdc_sodx3"
+
+\end_inset
+
+ (the names may look a bit confusing, but for me it was not clear up to
+ which part gms2 was supposed to be and experiments were asked in the meanwhile).
+\end_layout
+
+\begin_layout Standard
+The first implementation we have for this (
+\emph on
+gms2_1.erl
+\emph default
+) works just fine even if a forced 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+stop
+\end_layout
+
+\end_inset
+
+ message is sent to the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+, this way an election is called among the 
+\series bold
+\emph on
+Slaves
+\series default
+\emph default
+ and a new 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ is 
+\emph on
+elected
+\emph default
+.
+ The 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:gms2_1.erl-working"
+
+\end_inset
+
+ shows print-screen of this system working and 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:gms2_1.erl-failure"
+
+\end_inset
+
+ shows another print-screen where now an election has selected the new 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename seminar3_Groupy/gms2_1_ok.png
+	lyxscale 85
+	scale 45
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+
+\emph on
+gms2_1.erl
+\emph default
+ working, with some debugging messages
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:gms2_1.erl-working"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename seminar3_Groupy/gms2_1_failure.png
+	lyxscale 85
+	scale 45
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+
+\emph on
+gms2_1.erl
+\emph default
+ after the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ was stopped, an election take place
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:gms2_1.erl-failure"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+An experiment using 
+\emph on
+groupybis.erl
+\emph default
+ (where two groups were created) also showed the same good results as with
+ only one group.
+\end_layout
+
+\begin_layout Standard
+But this implementation still rely on the assumption that messages will
+ be delivered to all the nodes before the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ dies.
+\end_layout
+
+\begin_layout Standard
+The second implementation adds a risky factor to the equation: the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ now may exit in the middle of a broadcast operation, an then we are forcing
+ the case where a message could not be completely received by all the nodes,
+ breaking the total order requirement we assumed at the beginning of this
+ document.
+\end_layout
+
+\begin_layout Standard
+By running this example we could easily see that after the failure the nodes
+ get out of synchronization.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename seminar3_Groupy/gms2_run.png
+	lyxscale 85
+	scale 45
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+
+\emph on
+gms2.erl
+\emph default
+ nodes out of sync
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:gms2.erl-out_sync"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+This is explained by the fact that when the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ fails maybe not all the group members received the last message while some
+ might have received.
+ In this case, based on the way the 
+\series bold
+\emph on
+Worker
+\series default
+\emph default
+ calculates the new colors, those that did not receive the message before
+ the failure will show a different state (color) than those that actually
+ received it.
+ In the 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:gms2.erl-out_sync"
+
+\end_inset
+
+ the group member 
+\series bold
+\emph on
+1
+\series default
+\emph default
+ was the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ failed and certainly the last message it sent was only received by members
+ 
+\series bold
+\emph on
+2
+\series default
+\emph default
+ and 
+\series bold
+\emph on
+3
+\series default
+\emph default
+, leaving members 
+\series bold
+\emph on
+4
+\series default
+\emph default
+ and 
+\series bold
+\emph on
+5
+\series default
+\emph default
+ out of sync.
+ This can be easily verified with the message ID added in the next version
+ of this code.
+\end_layout
+
+\begin_layout Subsection
+gms3
+\end_layout
+
+\begin_layout Standard
+In this final version the 
+\series bold
+\emph on
+Slaves
+\series default
+\emph default
+ store the last message received from the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ so after an election the selected member can re-transmit this information
+ to guarantee the FIFO and total order of our system, as well as all the
+ multicasted messages are labeled with ID numbers to avoid doublet receptions
+ and avoid the problem with synchronization between the members after a
+ 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ failure (as seen on 
+\emph on
+gms2
+\emph default
+).
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename seminar3_Groupy/gms3.png
+	lyxscale 85
+	scale 45
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+
+\emph on
+gms3.erl
+\emph default
+ the members are still in sync after a 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ failure
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:gms3.erl-ok"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:gms3.erl-ok"
+
+\end_inset
+
+ shows a print-screen where we can see the system still in complete sync
+ after a 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ failure.
+ Note that from the debug messages we can see that when the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ failed the last message received by members 
+\series bold
+\emph on
+2
+\series default
+\emph default
+ and 
+\series bold
+\emph on
+3
+\series default
+\emph default
+ had the ID equal to 170, while members 
+\series bold
+\emph on
+4
+\series default
+\emph default
+ and 
+\series bold
+\emph on
+5
+\series default
+\emph default
+ was 169.
+ This can illustrate what happened on the 
+\emph on
+gms2
+\emph default
+ experiment where the members got out of sync after a failure.
+\end_layout
+
+\begin_layout Standard
+This could be tested with multiple groups using 
+\emph on
+groupybis.erl
+\emph default
+.
 \end_layout
 
 \begin_layout Section
@@ -2647,10 +3407,406 @@ Open questions
 \end_layout
 
 \begin_layout Standard
+All the following questions correspond to the ones asked at 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "emdc_sodx3"
 
-\shape italic
-Try to answer all the open questions in the documentation.
- If possible, do experiments to support your answers.
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+At section 2.4:
+\end_layout
+
+\begin_layout Itemize
+
+\emph on
+Compile the system and do some experiments to see that you can create a
+ group and add some peers.
+\end_layout
+
+\begin_layout Standard
+As mentioned in the previous sections, using 
+\emph on
+groupy.erl
+\emph default
+ as well as a modified version 
+\emph on
+groupybis.erl
+\emph default
+ that creates a second group and even adds a member using a 
+\series bold
+\emph on
+Slave
+\series default
+\emph default
+ as a target to request the acceptance as a new member, all works as expected,
+ so that 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ failures leave the 
+\series bold
+\emph on
+Slaves
+\series default
+\emph default
+ as zombies without updates.
+\end_layout
+
+\begin_layout Standard
+At section 3.2:
+\end_layout
+
+\begin_layout Itemize
+
+\emph on
+Run some experiments and see if you can have the state of the workers become
+ out of synch.
+ What is happening?
+\end_layout
+
+\begin_layout Standard
+As mentioned previously on this document, the members get out of sync because
+ some of them may not receive the last message from the failing 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ while some of them did, and since the new color to be displayed is calculated
+ based on the previous value the nodes that received the message get out
+ of sync with those that did not receive it.
+ This was later on fixed with message IDs and 
+\series bold
+\emph on
+Slaves
+\series default
+\emph default
+ saving the last message received from the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+.
+\end_layout
+
+\begin_layout Standard
+At section 3.4:
+\end_layout
+
+\begin_layout Itemize
+
+\emph on
+Run some experiments and create a large group spanning several computers.
+ Can we keep a group rolling by adding more nodes as existing nodes die?
+\end_layout
+
+\begin_layout Standard
+Running the experiments on a single machine but using the loopback interface
+ to connect the members we could perform these experiments.
+ The 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:gms3.erl-executed-using"
+
+\end_inset
+
+ shows three members running on the same machine, where the first one is
+ created as the leader.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename seminar3_Groupy/Screenshot from 2012-11-02 20:38:16.png
+	lyxscale 35
+	scale 23
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+
+\emph on
+gms3.erl
+\emph default
+ executed using the network
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:gms3.erl-executed-using"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:gms3.erl-fail"
+
+\end_inset
+
+ shows the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ failing but still the members are able to elect a new one.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename seminar3_Groupy/Screenshot from 2012-11-02 20:39:51.png
+	lyxscale 35
+	scale 23
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+
+\emph on
+gms3.erl
+\emph default
+ over the network: 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ fails
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:gms3.erl-fail"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+And finally, 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:gms3.erl-net-4th"
+
+\end_inset
+
+ shows a new member being added to the group.
+ This member tries to contact the 
+\emph on
+first_leader
+\emph default
+ that at this moment is dead, so we retry it using the current 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ that at this moment is 
+\emph on
+first_slave
+\emph default
+.
+ And it all works just fine, as expected.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename seminar3_Groupy/Screenshot from 2012-11-02 20:40:33.png
+	lyxscale 35
+	scale 23
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+
+\emph on
+gms3.erl
+\emph default
+ over the network: a new member is added
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:gms3.erl-net-4th"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+On a larger environment (that we don't have access now, the behavior for
+ these implementations should also still be the same.
+ So we can add members ass nodes die because we know the current 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+, without this information we would still be able to connect if we know
+ any other existing member of the group.
+\end_layout
+
+\begin_layout Standard
+At section 4:
+\end_layout
+
+\begin_layout Itemize
+
+\emph on
+How would we have to change the implementation to handle the possibly lost
+ messages? How would this impact performance?
+\end_layout
+
+\begin_layout Standard
+To handle possibly lost messages we could use acknowledgements for every
+ message sent from one member to the other and enforce the FIFO requirement,
+ so a message can only be sent if the previous message has been received
+ and therefore acknowledged by the receiver.
+ It could be done following 
+\emph on
+gms3
+\series bold
+\emph default
+ 
+\series default
+using the messages ID introduced in this code, where the next message with
+ a new ID could only be multicasted in total order when all the live 
+\series bold
+\emph on
+Slaves
+\series default
+\emph default
+ had received the message with the previous ID, to do so the 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ should also track the state of its 
+\series bold
+\emph on
+Slaves
+\series default
+\emph default
+ (i.e.
+ using erlang:monitor) and remove 
+\emph on
+dead
+\emph default
+ 
+\series bold
+\emph on
+Slaves
+\series default
+\emph default
+ from the Peers list updating the view of the group.
+\end_layout
+
+\begin_layout Standard
+These modifications would bring a considerable network overhead, since now
+ ack messages will be necessary along with new views for every new member
+ exiting the group.
+\end_layout
+
+\begin_layout Itemize
+
+\emph on
+Is really the case that we will never suspect any correct node for having
+ crashed?
+\end_layout
+
+\begin_layout Standard
+We may have the case where a node gets stuck at some point and doesn't really
+ exit the system.
+ So that node will not respond and the erlang monitor won't notify about
+ this hang.
+ All the other nodes will think it's alive and will also wait for it to
+ respond.
+ A global timeout for all the operations could be used to solve it, so that
+ when the timeout occurs a simple check can be made giving the suspected
+ process another chance to answer before being 
+\emph on
+kicked out
+\emph default
+ of the system.
 \end_layout
 
 \begin_layout Section
@@ -2658,10 +3814,32 @@ Conclusions
 \end_layout
 
 \begin_layout Standard
-
-\shape italic
-Describe the lessons you have learnt in this seminar, and give your opinion
- about it.
+During this session we implemented a group membership service where an applicati
+on layer could exchange messages via a group membership layer in that its
+ members were divided into a 
+\series bold
+\emph on
+Leader
+\series default
+\emph default
+ and 
+\series bold
+\emph on
+Slaves
+\series default
+\emph default
+.
+ To be aware about the conditions (
+\emph on
+still alive?
+\emph default
+) of the other members is important in this case so that failing nodes don't
+ affect the rest of the group.
+ When trying to implement FIFO and total order for message service, important
+ measures should be taken into account during the design of such systems,
+ for example, message IDs and track messages that might not reach the whole
+ group that must be resent somehow to achieve the requirements of these
+ ordering systems.
 \end_layout
 
 \begin_layout Standard

@@ -14,7 +14,8 @@ start(Module) ->
     register(g, worker:start("2a", Module, 2, Leader2, 1200)),
     register(h, worker:start("3a", Module, 3, Leader2, 1200)),
     register(i, worker:start("4a", Module, 4, Leader2, 1200)),
-    register(j, worker:start("5a", Module, 5, Leader2, 1200)).
+    register(j, worker:start("5a", Module, 5, Leader2, 1200)),
+    register(k, worker:start("6a", Module, 5, j, 1200)).
 
 stop() ->
     a ! stop,
@@ -26,4 +27,5 @@ stop() ->
     g ! stop,
     h ! stop,
     i ! stop,
-    j ! stop.
+    j ! stop,
+    k ! stop.
