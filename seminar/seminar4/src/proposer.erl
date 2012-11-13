@@ -41,10 +41,10 @@ ballot(Name, Round, Proposal, Acceptors, PanelId) ->
             PanelId ! {updateProp, "Round: "
                        ++ lists:flatten(io_lib:format("~p", [Round])), "Proposal: "
                        ++ lists:flatten(io_lib:format("~p", [Value])), Value},
-            accept(..., ..., ...),
-            case vote(..., ...) of
+            accept(Round, Value, Acceptors),
+            case vote(Quorum, Round) of
                 ok ->
-                    {ok, ...};
+                    {ok, Value};
                 abort ->
                     abort
             end;
@@ -53,18 +53,18 @@ ballot(Name, Round, Proposal, Acceptors, PanelId) ->
     end.
 
 collect(0, _, _, Proposal) ->
-    {..., ...};
+    {accepted, Proposal};
 
 collect(N, Round, Max, Proposal) ->
     receive
         {promise, Round, _, na} ->
-            collect(..., ..., ..., ...);
+            collect(N-1, Round, Max, Proposal);
         {promise, Round, Voted, Value} ->
-            case order:gr(..., ...) of
+            case order:gr(Voted, Max) of
                 true ->
-                    collect(..., ..., ..., ...);
+                    collect(N-1, Round, Voted, Value);
                 false ->
-                    collect(..., ..., ..., ...)
+                    collect(N-1, Round, Max, Proposal)
             end;
         {promise, _, _, _} ->
             collect(N, Round, Max, Proposal);
@@ -77,12 +77,12 @@ collect(N, Round, Max, Proposal) ->
     end.
 
 vote(0, _) ->
-    ...;
+    ok;
 
 vote(N, Round) ->
     receive
         {vote, Round} ->
-            vote(..., ...);
+            vote(N-1, Round);
         {vote, _} ->
             vote(N, Round);
         {sorry, Round} ->
