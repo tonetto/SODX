@@ -9,7 +9,7 @@
 -define(DBG(X,Y,Z), true).
 -endif.
 
--define(delay, 150).
+-define(delay, 250).
 
 start(Name, Proposal, Acceptors, Seed, PanelId) ->
     spawn(fun() -> init(Name, Proposal, Acceptors, Seed, PanelId) end).

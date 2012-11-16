@@ -14,7 +14,7 @@
 -endif.
 
 -define(arghh,10).
--define(delay, 650).
+-define(delay, 500).
 
 start(Name, Seed, PanelId) ->
     spawn(fun() -> init(Name, Seed, PanelId) end).

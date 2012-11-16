@@ -7,7 +7,7 @@
 -define(DBG(X,Y,Z), true).
 -endif.
 
--define(delay, 2000).
+-define(delay, 500).
 
 start(Name, Seed, PanelId) ->
     spawn(fun() -> init(Name, Seed, PanelId) end).

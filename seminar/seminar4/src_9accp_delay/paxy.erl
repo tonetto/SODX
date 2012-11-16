@@ -53,7 +53,12 @@ stop() ->
     stop(b),
     stop(c),
     stop(d),
-    stop(e).
+    stop(e),
+    stop(f),
+    stop(g),
+    stop(h),
+    stop(j).
+    
 
 stop(Name) ->
     case whereis(Name) of

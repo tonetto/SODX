@@ -1,6 +1,6 @@
 -module(proposer).
 -export([start/5]).
--define(timeout, 2000).
+-define(timeout, 200).
 -define(backoff, 10).
 
 -ifdef(debug).
@@ -8,6 +8,8 @@
 -else.
 -define(DBG(X,Y,Z), true).
 -endif.
+
+-define(delay, 250).
 
 start(Name, Proposal, Acceptors, Seed, PanelId) ->
     spawn(fun() -> init(Name, Proposal, Acceptors, Seed, PanelId) end).
@@ -124,4 +126,6 @@ accept(Round, Proposal, Acceptors) ->
     lists:map(Fun, Acceptors).
 
 send(Name, Message) ->
+    R = random:uniform(?delay),
+    timer:sleep(R),
     Name ! Message.

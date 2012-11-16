@@ -1,6 +1,6 @@
 -module(proposer).
 -export([start/5]).
--define(timeout, 1000).
+-define(timeout, 2000).
 -define(backoff, 10).
 
 -ifdef(debug).
@@ -9,7 +9,7 @@
 -define(DBG(X,Y,Z), true).
 -endif.
 
--define(delay, 850).
+-define(delay, 5000).
 
 start(Name, Proposal, Acceptors, Seed, PanelId) ->
     spawn(fun() -> init(Name, Proposal, Acceptors, Seed, PanelId) end).
