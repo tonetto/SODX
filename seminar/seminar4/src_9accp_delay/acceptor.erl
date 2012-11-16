@@ -7,6 +7,8 @@
 -define(DBG(X,Y,Z), true).
 -endif.
 
+-define(delay, 2000).
+
 start(Name, Seed, PanelId) ->
     spawn(fun() -> init(Name, Seed, PanelId) end).
 
@@ -26,6 +28,8 @@ acceptor(Name, Promise, Voted, Accepted, PanelId) ->
             ?DBG(Name,"I made the following promise so far:",Promise),
             case order:gr(Round, Promise) of
                 true ->
+                    R = random:uniform(?delay),
+                    timer:sleep(R),
                     Proposer ! {promise, Round, Voted, Accepted},
                     % Update gui
                     if
@@ -44,6 +48,8 @@ acceptor(Name, Promise, Voted, Accepted, PanelId) ->
                     end,
                     acceptor(Name, Round, Voted, Accepted, PanelId);
                 false ->
+                    R = random:uniform(?delay),
+                    timer:sleep(R),
                     Proposer ! {sorry, Round},
                     acceptor(Name, Promise, Voted, Accepted, PanelId)
             end;
@@ -55,6 +61,8 @@ acceptor(Name, Promise, Voted, Accepted, PanelId) ->
             ?DBG(Name,"The highest ballot I voted for is",Voted),
             case order:goe(Round, Promise) of
                 true ->
+                    R = random:uniform(?delay),
+                    timer:sleep(R),
                     Proposer ! {vote, Round},
                     case order:goe(Round, Voted) of
                         true ->
@@ -75,6 +83,8 @@ acceptor(Name, Promise, Voted, Accepted, PanelId) ->
                             acceptor(Name, Promise, Voted, Accepted, PanelId)
                     end;
                 false ->
+                    R = random:uniform(?delay),
+                    timer:sleep(R),
                     Proposer ! {sorry, Round},
                     acceptor(Name, Promise, Voted, Accepted, PanelId)
             end;

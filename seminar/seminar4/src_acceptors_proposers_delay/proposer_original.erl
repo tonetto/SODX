@@ -1,4 +1,4 @@
--module(proposer).
+-module(proposer_original).
 -export([start/5]).
 -define(timeout, 2000).
 -define(backoff, 10).
