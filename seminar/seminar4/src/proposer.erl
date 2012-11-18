@@ -29,6 +29,7 @@ round(Name, Backoff, Round, Proposal, Acceptors, PanelId) ->
         {ok, Decision} ->
             io:format("[Proposer ~w] ~w decided ~w in round ~w~n",
                       [Name, Acceptors, Decision, Round]),
+            ?DBG(Name,"FINALY AGREED ON THE VALUE",Decision),
             {ok, Decision};
         abort ->
             ?DBG(Name,"Aborted this round, let's try again! Failed round:",Round),

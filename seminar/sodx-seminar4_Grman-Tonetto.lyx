@@ -36,6 +36,7 @@
 \output_sync 0
 \bibtex_command default
 \index_command default
+\float_placement H
 \paperfontsize 11
 \spacing single
 \use_hyperref false
@@ -2004,7 +2005,7 @@ round(Name, Backoff, Round, Proposal, Acceptors, PanelId) ->
 
 \begin_layout Plain Layout
 
-               ++ lists:flatten(io_lib:format("~p", [Proposal])), Proposal},
+              ++ lists:flatten(io_lib:format("~p", [Proposal])), Proposal},
 \end_layout
 
 \begin_layout Plain Layout
@@ -2024,7 +2025,12 @@ round(Name, Backoff, Round, Proposal, Acceptors, PanelId) ->
 
 \begin_layout Plain Layout
 
-       color               [Name, Acceptors, Decision, Round]),
+                      [Name, Acceptors, Decision, Round]),
+\end_layout
+
+\begin_layout Plain Layout
+
+            ?DBG(Name,"FINALY AGREED ON THE VALUE",Decision),
 \end_layout
 
 \begin_layout Plain Layout
@@ -2737,37 +2743,31 @@ status open
 
 \begin_layout Plain Layout
 
-\size footnotesize
 (...)
 \end_layout
 
 \begin_layout Plain Layout
 
-\size footnotesize
 init(Name, Seed, na) ->
 \end_layout
 
 \begin_layout Plain Layout
 
-\size footnotesize
     ?DBG(Name,"Recovering from crash! PID:",self()),
 \end_layout
 
 \begin_layout Plain Layout
 
-\size footnotesize
     random:seed(Seed, Seed, Seed),
 \end_layout
 
 \begin_layout Plain Layout
 
-\size footnotesize
     {Promise, Voted, Accepted, PanelId} = pers:read(Name),
 \end_layout
 
 \begin_layout Plain Layout
 
-\size footnotesize
     acceptor(Name, Promise, Voted, Accepted, PanelId);
 \end_layout
 
@@ -2777,31 +2777,26 @@ init(Name, Seed, na) ->
 
 \begin_layout Plain Layout
 
-\size footnotesize
 init(Name, Seed, PanelId) ->
 \end_layout
 
 \begin_layout Plain Layout
 
-\size footnotesize
    ?DBG(Name,"Acceptor Starting! PID:",self()),
 \end_layout
 
 \begin_layout Plain Layout
 
-\size footnotesize
     random:seed(Seed, Seed, Seed),
 \end_layout
 
 \begin_layout Plain Layout
 
-\size footnotesize
     {Promise, Voted, Accepted, _PanelId} = pers:read(Name),
 \end_layout
 
 \begin_layout Plain Layout
 
-\size footnotesize
     acceptor(Name, Promise, Voted, Accepted, PanelId).
 \end_layout
 
@@ -2811,133 +2806,111 @@ init(Name, Seed, PanelId) ->
 
 \begin_layout Plain Layout
 
-\size footnotesize
 acceptor(Name, Promise, Voted, Accepted, PanelId) ->
 \end_layout
 
 \begin_layout Plain Layout
 
-\size footnotesize
     receive
 \end_layout
 
 \begin_layout Plain Layout
 
-\size footnotesize
         {prepare, Proposer, Round} ->
 \end_layout
 
 \begin_layout Plain Layout
 
-\size footnotesize
         (...)
 \end_layout
 
 \begin_layout Plain Layout
 
-\size footnotesize
             case order:gr(Round, Promise) of
 \end_layout
 
 \begin_layout Plain Layout
 
-\size footnotesize
                 true ->
 \end_layout
 
 \begin_layout Plain Layout
 
-\size footnotesize
                     pers:store(Name, Round, Voted, Accepted, PanelId),
 \end_layout
 
 \begin_layout Plain Layout
 
-\size footnotesize
         (...)
 \end_layout
 
 \begin_layout Plain Layout
 
-\size footnotesize
         {accept, Proposer, Round, Proposal} ->
 \end_layout
 
 \begin_layout Plain Layout
 
-\size footnotesize
             case order:goe(Round, Promise) of
 \end_layout
 
 \begin_layout Plain Layout
 
-\size footnotesize
                 true ->
 \end_layout
 
 \begin_layout Plain Layout
 
-\size footnotesize
                     R = random:uniform(?delay),
 \end_layout
 
 \begin_layout Plain Layout
 
-\size footnotesize
                     timer:sleep(R),
 \end_layout
 
 \begin_layout Plain Layout
 
-\size footnotesize
                     Proposer ! {vote, Round},
 \end_layout
 
 \begin_layout Plain Layout
 
-\size footnotesize
                     case order:goe(Round, Voted) of
 \end_layout
 
 \begin_layout Plain Layout
 
-\size footnotesize
                         true ->
 \end_layout
 
 \begin_layout Plain Layout
 
-\size footnotesize
                             pers:store(Name, Promise, Round, Proposal, PanelId),
 \end_layout
 
 \begin_layout Plain Layout
 
-\size footnotesize
                     (...)
 \end_layout
 
 \begin_layout Plain Layout
 
-\size footnotesize
         stop ->
 \end_layout
 
 \begin_layout Plain Layout
 
-\size footnotesize
             pers:delete(Name),
 \end_layout
 
 \begin_layout Plain Layout
 
-\size footnotesize
             ok
 \end_layout
 
 \begin_layout Plain Layout
 
-\size footnotesize
     end.
 \end_layout
 
@@ -3316,7 +3289,241 @@ Basic
 \end_layout
 
 \begin_layout Standard
-The basic implementation runs
+The basic implementation runs without much problems at a first glance.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename seminar4/paxy_basic.png
+	lyxscale 50
+	scale 30
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Basic system execution
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Basic-system-execution"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:Basic-system-execution"
+
+\end_inset
+
+ shows the execution of the code.
+ The nodes quickly reach consensus upon the blue color, and this value for
+ the basic system will always repeat because the messages won't have a delay
+ and on the first round the 
+\series bold
+\emph on
+Proposer
+\series default
+\emph default
+ with the blue color by have a alphabetically higher name will have all
+ the 
+\series bold
+\emph on
+Acceptors
+\series default
+\emph default
+ quickly voting for that value.
+ So without delays the result is always the same.
+\end_layout
+
+\begin_layout Standard
+But as proposed on the open questions, by adding a delay on the execution
+ of both roles interesting things start to happen.
+ 
+\bar under
+Note
+\bar default
+: the source code for this part is in 
+\emph on
+src_delay/
+\emph default
+ directory.
+\end_layout
+
+\begin_layout Standard
+By running 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+sleep()
+\end_layout
+
+\end_inset
+
+ for a random period before each message was sent we could still reach consensus
+ but now on different values since now 
+\series bold
+\emph on
+Acceptors
+\series default
+\emph default
+ have time to receive requests for promise of greater sequence numbers from
+ different 
+\series bold
+\emph on
+Proposers
+\series default
+\emph default
+, not just the blue holder anymore.
+ The 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:Paxos-with-delay"
+
+\end_inset
+
+ shows the system reaching consensus on a different value with delay.
+ For this and most of the next tests performed with delay the original value
+ of timeout of the 
+\series bold
+\emph on
+Proposers
+\series default
+\emph default
+ was reduced to 200, the maximum random number of milliseconds they'll sleep
+ is 250 and the 
+\series bold
+\emph on
+Acceptors
+\series default
+\emph default
+ will be 500.
+ This was done to reduce the total time the system takes to reach consensus
+ and the debug messages were enough to follow the execution.
+ The initial 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Seed
+\end_layout
+
+\end_inset
+
+ passed to the execution of the whole system was usually ranging from 100
+ to 200, since it's also the value used by the 
+\series bold
+\emph on
+Proposers
+\series default
+\emph default
+ to randomly chose the time each one will back off before starting the new
+ round.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename seminar4/paxy_delay.png
+	lyxscale 50
+	scale 30
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Paxos with delay
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Paxos-with-delay"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Running this version of the code with multiple 
+\series bold
+\emph on
+Acceptors
+\series default
+\emph default
+ and 
+\series bold
+\emph on
+Proposers
+\series default
+\emph default
+, as well as having 
+\series bold
+\emph on
+Acceptors
+\series default
+\emph default
+ to drop votes and promises, and finally to have both set of roles running
+ on different machines will be discussed later on the open questions.
+ 
 \end_layout
 
 \begin_layout Subsection
@@ -3324,7 +3531,146 @@ Fault-tolerant
 \end_layout
 
 \begin_layout Standard
-asd
+For this implementation, as suggested, we increased the sleep time of the
+ 
+\series bold
+\emph on
+Acceptors
+\series default
+\emph default
+ and therefore, the timeout of the 
+\series bold
+\emph on
+Proposers
+\series default
+\emph default
+ was also brought to its original value.
+ With the modifications proposed the 
+\series bold
+\emph on
+Acceptors
+\series default
+\emph default
+ can now save their current status on a binary file, we can then crash any
+ of them or even all of them and we still reach consensus on a value.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename seminar4/paxy_fault_tolerant.png
+	lyxscale 50
+	scale 30
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Fault-tolerant 
+\series bold
+\emph on
+Acceptors
+\series default
+\emph default
+: crashing on node
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Fault-tolerant-Acceptors:-crash"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename seminar4/paxy_fault_tolerant_consensus.png
+	lyxscale 50
+	scale 30
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Fault-tolerant 
+\series bold
+\emph on
+Acceptors
+\series default
+\emph default
+: reaching consensus
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Fault-toler-con"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:Fault-tolerant-Acceptors:-crash"
+
+\end_inset
+
+ shows the crash of one 
+\series bold
+\emph on
+Acceptor
+\series default
+\emph default
+ and even with that we are still able to reach consensus, as shown by 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:Fault-toler-con"
+
+\end_inset
+
+.
 \end_layout
 
 \begin_layout Subsection
@@ -3332,7 +3678,192 @@ Optimized
 \end_layout
 
 \begin_layout Standard
-asd
+This optimized version of the implementation also runs without problems
+ and the system is still able to reach consensus as shown by 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:Paxy-sorry"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename seminar4/paxy_fault_tolerant_optimized.png
+	lyxscale 50
+	scale 30
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Optimization reaching consensus
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Paxy-sorry"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+But one possible problem of this system, since now we are counting the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+sorry
+\end_layout
+
+\end_inset
+
+ messages, that we could not reproduce or we were not able to notice, is
+ that since the 
+\series bold
+\emph on
+Acceptors
+\series default
+\emph default
+ are sending the same prototype of 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+sorry
+\end_layout
+
+\end_inset
+
+ messages as an answer to 
+\emph on
+prepare
+\emph default
+ and 
+\emph on
+accept
+\emph default
+ actions, it could happen that:
+\end_layout
+
+\begin_layout Enumerate
+A 
+\series bold
+\emph on
+Proposer
+\series default
+\emph default
+ sends the
+\emph on
+ 
+\emph default
+
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+prepare
+\end_layout
+
+\end_inset
+
+ messages.
+\end_layout
+
+\begin_layout Enumerate
+Receives a quorum number of 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+promise
+\end_layout
+
+\end_inset
+
+ messages.
+\end_layout
+
+\begin_layout Enumerate
+Requests a 
+\emph on
+voting
+\emph default
+.
+\end_layout
+
+\begin_layout Enumerate
+And only then receives both negative messages from the 
+\series bold
+\emph on
+Acceptors
+\series default
+\emph default
+ that are negating the 
+\emph on
+prepare
+\emph default
+ and the 
+\emph on
+voting
+\emph default
+ it might give up that round wrongly.
+\end_layout
+
+\begin_layout Standard
+One possible solution for this would be to differentiate the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+sorry
+\end_layout
+
+\end_inset
+
+ messages with a third argument or simply modifying the label of the message.
 \end_layout
 
 \begin_layout Section
@@ -3348,7 +3879,119 @@ Do some experiments and see how the system works.
 \end_layout
 
 \begin_layout Standard
-asd
+
+\bar under
+Note
+\bar default
+: the code for this part is in the 
+\emph on
+src_acceptors_proposers_delay/
+\emph default
+ directory.
+\end_layout
+
+\begin_layout Standard
+The final code for each split part of 
+\emph on
+paxy
+\emph default
+ had to deal with the way Erlang references remote instances.
+ Basically the distributed modules now will exchange the information about
+ the instances of 
+\series bold
+\emph on
+Acceptors
+\series default
+\emph default
+ and 
+\series bold
+\emph on
+Proposers
+\series default
+\emph default
+ each one will create so then they can start.
+ The 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:Acceptors-and-Proposers"
+
+\end_inset
+
+ shows the system reaching consensus.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename seminar4/paxy_acceptor_proposers.png
+	lyxscale 45
+	scale 25
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+
+\series bold
+\emph on
+Acceptors 
+\series default
+\emph default
+and
+\series bold
+\emph on
+ Proposers
+\series default
+\emph default
+ running on different instances of Erlang
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Acceptors-and-Proposers"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+To run it we started both instances on the same machine with the following
+ commands:
+\end_layout
+
+\begin_layout Enumerate
+
+\emph on
+$ erl -name proposers@127.0.0.1 -setcookie secret
+\end_layout
+
+\begin_layout Enumerate
+$ 
+\emph on
+erl -name acceptors@127.0.0.1 -setcookie secret
 \end_layout
 
 \begin_layout Itemize
@@ -3359,13 +4002,298 @@ Try to introduce delays in the acceptor and the proposer.
 \end_layout
 
 \begin_layout Standard
-asd
+
+\bar under
+Note
+\bar default
+: the code for this part is in the 
+\emph on
+src_delay/
+\emph default
+ directory.
+\end_layout
+
+\begin_layout Standard
+As already discussed previously the delay makes the code execution more
+ interesting because it reproduces the real environment where messages might
+ be delayed to be delivered and 
+\series bold
+\emph on
+Proposers
+\series default
+\emph default
+ can then start new rounds.
+ Based on the 
+\series bold
+\emph on
+Proposers
+\series default
+\emph default
+ timeout, choosing lower values for delays didn't affect the execution from
+ the basic version, but higher values introduced randomness to the system
+ and really high values of delay rose the number of necessary rounds to
+ reach consensus, but still, after a long time, the system was still able
+ to reach consensus.
+ Notice that the delay is actually randomly chosen with a maximum possible
+ given value.
 \end_layout
 
 \begin_layout Itemize
 
 \emph on
 Could you even come to an agreement when you ignore messages?
+\end_layout
+
+\begin_layout Standard
+
+\bar under
+Note
+\bar default
+: the code for this part are in the 
+\emph on
+src_no_sorry_delay/
+\emph default
+ and 
+\emph on
+src_drop_vote_delay/ 
+\emph default
+directories.
+ To compile the 
+\emph on
+src_drop_vote_delay/
+\emph default
+ code another macro should be defined to differentiate what the 
+\series bold
+\emph on
+Acceptor
+\series default
+\emph default
+ should do when dropping votes, either keep the content of the voted value
+ (as the original execution) by defining the macro 
+\series bold
+\emph on
+keep
+\series default
+\emph default
+, or don't keep the value neither the voted round if needed.
+ To define it compile it as the following command:
+\end_layout
+
+\begin_layout Standard
+\align center
+
+\emph on
+$ erlc -Ddebug -Dkeep *.erl
+\end_layout
+
+\begin_layout Standard
+Since up to this part we were still ignoring the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+sorry
+\end_layout
+
+\end_inset
+
+ messages the 
+\series bold
+\emph on
+Proposers
+\series default
+\emph default
+ were receiving, not sending it from the 
+\series bold
+\emph on
+Acceptors
+\series default
+\emph default
+ didn't change anything in the execution.
+\end_layout
+
+\begin_layout Standard
+On the other hand, dropping votes could affect the system if the number
+ of votes were too high.
+ For this, we defined the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+arghh
+\end_layout
+
+\end_inset
+
+ macro that would represent the possibility of missing a message.
+ For example with this value set to 10 we'll get 10% of chances of dropping
+ a vote.
+\end_layout
+
+\begin_layout Standard
+To drop a vote basically a new function was added:
+\end_layout
+
+\begin_layout Standard
+
+\size footnotesize
+\begin_inset listings
+lstparams "basicstyle={\scriptsize\ttfamily},language=erlang"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+send_vote(Name, Proposer, Round) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    case random:uniform(?arghh) of
+\end_layout
+
+\begin_layout Plain Layout
+
+        ?arghh ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            ?DBG(Name,"Oops! Dropped my vote for Round",Round),
+\end_layout
+
+\begin_layout Plain Layout
+
+            dropped;
+\end_layout
+
+\begin_layout Plain Layout
+
+        _ ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            R = random:uniform(?delay),
+\end_layout
+
+\begin_layout Plain Layout
+
+            timer:sleep(R),
+\end_layout
+
+\begin_layout Plain Layout
+
+            Proposer ! {vote, Round},
+\end_layout
+
+\begin_layout Plain Layout
+
+            voted
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:Dropping-votes"
+
+\end_inset
+
+ shows the system still reaching consensus with 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+arghh
+\end_layout
+
+\end_inset
+
+ set to 10.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename seminar4/paxy_drop_votes.png
+	lyxscale 50
+	scale 30
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Dropping votes
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Dropping-votes"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Running it with higher probabilities of dropping messages the consensus
+ started to take longer and longer to be reachable.
+ For values of 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+arghh
+\end_layout
+
+\end_inset
+
+ set to 5 the algorithm was still concluding but after a long time.
 \end_layout
 
 \begin_layout Itemize
@@ -3375,7 +4303,8 @@ Does the algorithm ever report conflicting answers?
 \end_layout
 
 \begin_layout Standard
-asd
+No.
+ We could not notice any conflicting answers during any of the tests.
 \end_layout
 
 \begin_layout Itemize
@@ -3386,15 +4315,355 @@ What happens if we increase the number of acceptors to say 9 or 17? Will
 \end_layout
 
 \begin_layout Standard
-asd
-\end_layout
 
-\begin_layout Itemize
-Simulate a crash using the crash thing.
+\bar under
+Note
+\bar default
+: the code for this part are in 
+\emph on
+src_9accp_delay/
+\emph default
+ , 
+\emph on
+src_17accp_delay/
+\emph default
+ , 
+\emph on
+src_10prop_delay/
+\emph default
+ and 
+\emph on
+src_17accp_10prop_delay/
+\emph default
+.
 \end_layout
 
 \begin_layout Standard
-asd
+With multiple 
+\series bold
+\emph on
+Proposers
+\series default
+\emph default
+ and 
+\series bold
+\emph on
+Acceptors
+\series default
+\emph default
+ the system is still able to run and reach consensus.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename seminar4/paxy_9accp.png
+	lyxscale 50
+	scale 30
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+With 9 
+\series bold
+\emph on
+Acceptors
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:With-9-Accept"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename seminar4/paxy_17accp.png
+	lyxscale 50
+	scale 30
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+With 17 
+\series bold
+\emph on
+Acceptors
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:With-17-Acceptors"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename seminar4/paxy_10prop.png
+	lyxscale 50
+	scale 30
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+With 10 
+\series bold
+\emph on
+Proposers
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:With-10-Proposers"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename seminar4/paxy_17accp_10prop.png
+	lyxscale 50
+	scale 30
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+With 17 
+\series bold
+\emph on
+Acceptors
+\series default
+\emph default
+ and 10 
+\series bold
+\emph on
+Proposers
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:With-17-P-10-A"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:With-9-Accept"
+
+\end_inset
+
+, 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:With-17-Acceptors"
+
+\end_inset
+
+, 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:With-10-Proposers"
+
+\end_inset
+
+ and 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:With-17-P-10-A"
+
+\end_inset
+
+ shows the system running with multiple numbers of nodes and they are all
+ still able to reach consensus.
+ With more 
+\series bold
+\emph on
+Acceptors
+\series default
+\emph default
+ both the 
+\emph on
+prepare
+\emph default
+ and 
+\emph on
+accept
+\emph default
+ actions are certainly taking longer because more votes are needed to agree
+ on a sequence number or a value.
+ With more 
+\series bold
+\emph on
+Proposers
+\series default
+\emph default
+ the time needed for 
+\series bold
+\emph on
+Acceptors
+\series default
+\emph default
+ to start voting and reaching majority on a value may change, and the time
+ for the first ones to finally agree on a value also increases, but sill,
+ consensus is reached.
+\end_layout
+
+\begin_layout Itemize
+
+\emph on
+Simulate a crash using the crash function.
+\end_layout
+
+\begin_layout Standard
+This was already commented about on the previous sections.
+\end_layout
+
+\begin_layout Itemize
+
+\emph on
+Change the code of the 
+\emph default
+
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+collect/4
+\end_layout
+
+\end_inset
+
+
+\emph on
+ and 
+\emph default
+
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+vote/2
+\end_layout
+
+\end_inset
+
+
+\emph on
+ procedures to implement the afore-mentioned improvement.
+\end_layout
+
+\begin_layout Standard
+This was also already commented about on the previous sections.
 \end_layout
 
 \begin_layout Section
@@ -3402,7 +4671,19 @@ Conclusions
 \end_layout
 
 \begin_layout Standard
-asd
+In this seminar we implemented the Paxos algorithm for gaining consensus
+ in a distributed system where processes could propose values and the consensus
+ algorithm ensured that a single one among the proposed values was chosen.
+ We could learn that even with delays and message drops the algorithm is
+ still reliable and the consensus sooner or later is reached.
+ This algorithm can then be used on systems where participants must select
+ one 
+\emph on
+best
+\emph default
+ value for a given distributed element.
+ Many other possible optimizations could be done to the code, but the simplest
+ approach already proved some aspects of the algorithm.
 \end_layout
 
 \begin_layout Standard
