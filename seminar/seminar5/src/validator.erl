@@ -2,7 +2,7 @@
 -export([start/0]).
 
 -ifdef(debug).
--define(DBG(X,Y,Z), io:format("[HANDLER_DEBUG] ~w: ~s ~w~n", [X, Y, Z])).
+-define(DBG(X,Y,Z), io:format("[VALIDATOR_DEBUG] ~w: ~s ~w~n", [X, Y, Z])).
 -else.
 -define(DBG(X,Y,Z), true).
 -endif.
@@ -11,12 +11,13 @@ start() ->
     spawn_link(fun() -> init() end).
 
 init()->
-    ?DBG(self(),"Initializing validator",ok),
+    ?DBG(validator,"Initializing validator",ok),
     validator().
 
 validator() ->
     receive
         {validate, Ref, Reads, Writes, Client} ->
+            ?DBG(validator,"Received a validate from client",Client),
             case validate(Reads) of
                 ok ->
                     update(Writes),
@@ -30,8 +31,9 @@ validator() ->
     end.
 
 update(Writes) ->
+    ?DBG(validator,"Commiting writes!",ok),
     lists:map(fun({_, Entry, Value}) ->
-                      %% TODO: ADD SOME CODE
+                      Entry ! {write, Value}
               end,
               Writes).
 
@@ -49,15 +51,15 @@ send_checks(Reads) ->
               Reads),
     {N, Tag}.
 
+check_reads(0, Tag) ->
+    ?DBG(validator,"All reads were ok for Tag",Tag),
+    ok;
+
 check_reads(N, Tag) ->
-    if
-        N == 0 ->
-            ok;
-        true ->
-            receive
-                {Tag, ok} ->
-                    check_reads(N-1, Tag);
-                {Tag, abort} ->
-                    abort
-            end
+    receive
+        {Tag, ok} ->
+            check_reads(N-1, Tag);
+        {Tag, abort} ->
+            ?DBG(validator,"Conflicting reads for Tag",Tag),
+            abort
     end.

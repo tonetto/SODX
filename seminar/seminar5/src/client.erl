@@ -1,8 +1,18 @@
 -module(client).
 -export([start/4]).
 
+-ifdef(debug).
+-define(DBG(X,Y,Z), io:format("[CLIENT_DEBUG] ~w: ~s ~w~n", [X, Y, Z])).
+-else.
+-define(DBG(X,Y,Z), true).
+-endif.
+
 start(Name, Entries, Updates, Server) ->
-    spawn(fun() -> open(Name, Entries, Updates, Server, 0, 0) end).
+    spawn(fun() -> init(Name, Entries, Updates, Server, 0, 0) end).
+
+init(Name, Entries, Updates, Server, Total, Ok) ->
+    ?DBG(Name,"Initilizing Client",self()),
+    open(Name, Entries, Updates, Server, Total, Ok).
 
 open(Name, Entries, Updates, Server, Total, Ok) ->
     {A1,A2,A3} = now(),
@@ -15,6 +25,7 @@ open(Name, Entries, Updates, Server, Total, Ok) ->
             From ! {done, self()},
             ok;
         {transaction, Validator, Store} ->
+            ?DBG(Name,"Received a transaction message from the server!",ok),
             Handler = handler:start(self(), Validator, Store),
             do_transactions(Name, Entries, Updates, Server, Handler,
                             Total, Ok, Updates)

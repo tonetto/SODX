@@ -19,7 +19,7 @@ entry(Value, Time) ->
             From ! {Ref, self(), Value, Time},
             entry(Value, Time);
         {write, New} ->
-            ?DBG(self(),"Received a write with Value" New),
+            ?DBG(self(),"Received a write with Value",New),
             entry(New, make_ref());
         {check, Ref, Time, From} -> %% use pattern matching is more natural
             ?DBG(self(),"[OK] Received a check for {Ref,Time}",{Ref,Time}),
