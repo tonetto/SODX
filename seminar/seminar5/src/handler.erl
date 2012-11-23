@@ -1,6 +1,12 @@
 -module(handler).
 -export([start/3]).
 
+-ifdef(debug).
+-define(DBG(X,Y,Z), io:format("[HANDLER_DEBUG] ~w: ~s ~w~n", [X, Y, Z])).
+-else.
+-define(DBG(X,Y,Z), true).
+-endif.
+
 start(Client, Validator, Store) ->
     spawn_link(fun() -> init(Client, Validator, Store) end).
 
@@ -12,22 +18,28 @@ handler(Client, Validator, Store, Reads, Writes) ->
         {read, Ref, N} ->
             case lists:keysearch(N, 1, Writes) of
                 {value, {N, _, Value}} ->
-                    %% TODO: ADD SOME CODE
+                    ?DBG(Client,"Existing read entry",Value),
+                    Client ! {value, Ref, Value},
                     handler(Client, Validator, Store, Reads, Writes);
                 false ->
-                    %% TODO: ADD SOME CODE
-                    %% TODO: ADD SOME CODE
+                    ?DBG(Client,"New entry requested",N),
+                    Entry = store:lookup(N, Store),
+                    Entry ! {read, Ref, self()},
                     handler(Client, Validator, Store, Reads, Writes)
             end;
         {Ref, Entry, Value, Time} ->
-            %% TODO: ADD SOME CODE HERE AND COMPLETE NEXT LINE
-            handler(Client, Validator, Store, [...|Reads], Writes);
+            ?DBG(Client,"Received the read value from the Entry:",Value),
+            Client ! {value, Ref, Value},
+            handler(Client, Validator, Store, [{Entry, Time}|Reads], Writes);
         {write, N, Value} ->
-            %% TODO: ADD SOME CODE
-            Added = lists:keystore(N, 1, Writes,{N, ..., ...}), %% TODO: COMPLETE
+            ?DBG(Client,"write received for entry N",N),
+            Entry = store:lookup(N, Store),
+            Added = lists:keystore(N, 1, Writes,{N, Entry, Value}),
             handler(Client, Validator, Store, Reads, Added);
         {commit, Ref} ->
+            ?DBG(Client,"Sending a validate to commit the transactions",Ref),
             Validator ! {validate, Ref, Reads, Writes, Client};
         abort ->
+            ?DBG(Client,"abort received!",ok),
             ok
     end.

@@ -1,10 +1,17 @@
 -module(validator).
 -export([start/0]).
 
+-ifdef(debug).
+-define(DBG(X,Y,Z), io:format("[HANDLER_DEBUG] ~w: ~s ~w~n", [X, Y, Z])).
+-else.
+-define(DBG(X,Y,Z), true).
+-endif.
+
 start() ->
     spawn_link(fun() -> init() end).
 
 init()->
+    ?DBG(self(),"Initializing validator",ok),
     validator().
 
 validator() ->
