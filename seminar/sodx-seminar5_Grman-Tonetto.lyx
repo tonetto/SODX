@@ -1,0 +1,204 @@
+#LyX 2.0 created this file. For more info see http://www.lyx.org/
+\lyxformat 413
+\begin_document
+\begin_header
+\textclass article
+\begin_preamble
+% Very simple template for SODX lab reports. Most common packages are already included.
+
+% Change according your file encoding
+\usepackage{url}
+
+%opening
+\title{Seminar Report: Opty}
+\author{Peter Grman, Leonardo Tonetto}
+\date{\today{}}
+\end_preamble
+\use_default_options false
+\maintain_unincluded_children false
+\language english
+\language_package none
+\inputencoding utf8
+\fontencoding default
+\font_roman default
+\font_sans default
+\font_typewriter default
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\float_placement H
+\paperfontsize 11
+\spacing single
+\use_hyperref false
+\papersize a4paper
+\use_geometry false
+\use_amsmath 1
+\use_esint 1
+\use_mhchem 0
+\use_mathdots 0
+\cite_engine basic
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\use_refstyle 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Standard
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+
+\backslash
+maketitle
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Introduction
+\end_layout
+
+\begin_layout Standard
+asd
+\end_layout
+
+\begin_layout Section
+System overview
+\end_layout
+
+\begin_layout Standard
+asd
+\end_layout
+
+\begin_layout Section
+Evaluation
+\end_layout
+
+\begin_layout Standard
+asd
+\end_layout
+
+\begin_layout Section
+Open questions
+\end_layout
+
+\begin_layout Itemize
+
+\emph on
+What is the impact of the number of concurrent transactions on the success
+ rate (i.e.
+ percentage of committed transactions with respect to the total)?
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+
+\emph on
+Different number of entries in the store.
+\end_layout
+
+\begin_layout Standard
+asd
+\end_layout
+
+\begin_layout Itemize
+
+\emph on
+Different duration of the transactions (e.g.
+ each transaction takes around 1 second to commit).
+\end_layout
+
+\begin_layout Standard
+asd
+\end_layout
+
+\begin_layout Itemize
+
+\emph on
+Different ratio of read and write operations per transaction.
+\end_layout
+
+\begin_layout Standard
+asd
+\end_layout
+
+\begin_layout Itemize
+
+\emph on
+Different percentage of modified entries with respect to the total number
+ of entries (e.g.
+ each transaction modifies randomly 20% of entries).
+\end_layout
+
+\begin_layout Standard
+asd
+\end_layout
+
+\end_deeper
+\begin_layout Itemize
+
+\emph on
+Split the 
+\series bold
+\emph default
+opty
+\series default
+\emph on
+ module in two parts and make the needed adaptaions to enable the server
+ and clients to run in different machines.
+ If we run this in a distributed Erlang network, where is the handler running?
+ What is actually copied when a transaction handler is started?
+\end_layout
+
+\begin_layout Section
+Conclusions
+\end_layout
+
+\begin_layout Standard
+asd
+\begin_inset CommandInset bibtex
+LatexCommand bibtex
+bibfiles "sodx"
+options "plain"
+
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document

@@ -1,7 +1,7 @@
 -module(handler).
 -export([start/3]).
 
--ifdef(debug).
+-ifdef(debug_handler).
 -define(DBG(X,Y,Z), io:format("[HANDLER_DEBUG] ~w: ~s ~w~n", [X, Y, Z])).
 -else.
 -define(DBG(X,Y,Z), true).
@@ -14,6 +14,7 @@ init(Client, Validator, Store) ->
     handler(Client, Validator, Store, [], []).
 
 handler(Client, Validator, Store, Reads, Writes) ->
+    ?DBG(Client,"Waiting on Handler state",waiting),
     receive
         {read, Ref, N} ->
             case lists:keysearch(N, 1, Writes) of

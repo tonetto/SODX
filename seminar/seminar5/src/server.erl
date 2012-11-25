@@ -1,7 +1,7 @@
 -module(server).
 -export([start/1]).
 
--ifdef(debug).
+-ifdef(debug_server).
 -define(DBG(X,Y,Z), io:format("[SERVER_DEBUG] ~w: ~s ~w~n", [X, Y, Z])).
 -else.
 -define(DBG(X,Y,Z), true).
