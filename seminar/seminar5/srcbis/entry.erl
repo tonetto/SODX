@@ -9,7 +9,6 @@
 
 new(Value) ->
     spawn_link(fun() -> init(Value) end).
-
 init(Value) ->
     entry(Value, make_ref()).
 
