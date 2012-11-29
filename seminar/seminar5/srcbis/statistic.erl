@@ -14,14 +14,17 @@ start() ->
 
 init() ->
     ?DBG(statistic,"Starting the statistic thread",ok),
-    collect(0).
+    collect(1).
 
 collect(Round) -> %% Should only be called on the first execution
+    ?DBG(statistic,"Waiting for new data",waiting),
     receive
         {statistic, Round, Total, Ok} ->
+            ?DBG(statistic,"New Round started:",Round),
             Data = {Round, Total, Ok},
             collect(Round, Data, []);
         stop -> %% Nothing to return, since we have no data
+            ?DBG(statistic,"Got a stop",exit),
             ok
     end.
 
