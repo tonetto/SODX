@@ -93,7 +93,63 @@ Introduction
 \end_layout
 
 \begin_layout Standard
-asd
+In this seminar we implemented a transaction server using optimistic concurrency
+ control 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "kung1981optimistic"
+
+\end_inset
+
+.
+ Basically it assumes that multiple transactions can complete without affecting
+ each other, and that therefore transactions can proceed without locking
+ the data that they affect because it considers 
+\emph on
+locking
+\emph default
+ bottlenecks on any system.
+ Before committing, each transaction verifies that no other transaction
+ has modified its data.
+ If the check reveals conflicting modifications, the committing transaction
+ rolls back.
+\end_layout
+
+\begin_layout Standard
+An optimistic concurrency control system can be divided into the following
+ actions:
+\end_layout
+
+\begin_layout Enumerate
+Read/Write operations where the data is read from the storage and will tentative
+ly be written on a temporary location.
+\end_layout
+
+\begin_layout Enumerate
+Validate operation where the data that needs to be modified will be checked
+ if other operations are not conflicting and therefore blocking it from
+ finalizing.
+\end_layout
+
+\begin_layout Enumerate
+Commit/Rollback operations where, if the validation succeeded the data is
+ updated with the new value on the storage, otherwise the requester will
+ rollback the modification and will then decide what to do (e.g.
+ try again or just drop it).
+\end_layout
+
+\begin_layout Standard
+Along with it we also learned a possible implementation of updatable data
+ structure in Erlang that can be accessed by concurrent, possibly distributed
+ processes.
+ All was possible following the guidelines from 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "emdc_sodx5"
+
+\end_inset
+
+.
 \end_layout
 
 \begin_layout Section
@@ -101,7 +157,3161 @@ System overview
 \end_layout
 
 \begin_layout Standard
-asd
+
+\bar under
+Note
+\bar default
+: the source code for this part is on the 
+\emph on
+src/
+\emph default
+ directory that follows this document.
+\end_layout
+
+\begin_layout Standard
+On this system, basically we have 
+\series bold
+\emph on
+Clients
+\series default
+\emph default
+ that are going to make requests for 
+\series bold
+\emph on
+Entries
+\series default
+\emph default
+ to 
+\emph on
+read
+\emph default
+ or 
+\emph on
+write
+\emph default
+ them, probably do some work, then 
+\emph on
+validate
+\emph default
+ this data and ask for it to be 
+\emph on
+committed
+\emph default
+.
+ Each 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+ will do all these operations using a 
+\series bold
+\emph on
+Handler
+\series default
+\emph default
+, which will be individually assigned.
+ The 
+\series bold
+\emph on
+Handlers
+\series default
+\emph default
+ therefore will cache 
+\series bold
+\emph on
+Entry
+\series default
+\emph default
+ requests and lookup for new ones using the 
+\series bold
+\emph on
+Store
+\series default
+\emph default
+ API.
+ They will also validate a set of 
+\emph on
+reads
+\emph default
+ and 
+\emph on
+writes
+\emph default
+ with a 
+\series bold
+\emph on
+Validator
+\series default
+\emph default
+ whenever a client wants to commit new modifications.
+ An 
+\series bold
+\emph on
+Entry
+\series default
+\emph default
+ will receive 
+\emph on
+read
+\emph default
+ and 
+\emph on
+write
+\emph default
+ requests as well as 
+\emph on
+check
+\emph default
+ it, verifying if the value it contains was read from another 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+ after the requester did, invalidating any desired modification.
+ A 
+\series bold
+\emph on
+Validator
+\series default
+\emph default
+ will simply receive 
+\emph on
+validate
+\series bold
+\emph default
+ 
+\series default
+requests where it's going to check if all the 
+\emph on
+read
+\emph default
+ operations performed are valid for each 
+\series bold
+\emph on
+Entry
+\series default
+\emph default
+, if so all the write operations are finally sent.
+ Whenever a 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+ wants to join the system it's going to send a 
+\emph on
+open
+\emph default
+ request to the 
+\series bold
+\emph on
+Server
+\series default
+\emph default
+.
+ The 
+\series bold
+\emph on
+Server
+\series default
+\emph default
+ is going to be responsible for creating a tuple with all the exiting 
+\series bold
+\emph on
+Entries
+\series default
+\emph default
+ of the system and the 
+\series bold
+\emph on
+Validator
+\series default
+\emph default
+ module.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename seminar5/SODX_Opty.png
+	lyxscale 80
+	scale 30
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Messages between elements
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Messages"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:Messages"
+
+\end_inset
+
+ shows an overview of the messages exchanged between the modules of the
+ system.
+\end_layout
+
+\begin_layout Subsection
+Server
+\end_layout
+
+\begin_layout Standard
+The 
+\series bold
+\emph on
+Server
+\series default
+\emph default
+ module will simply create a tuple of 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Entries
+\end_layout
+
+\end_inset
+
+ as 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Store
+\end_layout
+
+\end_inset
+
+, create the 
+\series bold
+\emph on
+Validator
+\series default
+\emph default
+ and wait for two messages:
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{open, Client}
+\end_layout
+
+\end_inset
+
+ message sent by a 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+ that wants to join the system, it will respond back with 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{transaction, Validator, Store}
+\end_layout
+
+\end_inset
+
+ so that these values can be used afterwards when creating the 
+\series bold
+\emph on
+Handler
+\series default
+\emph default
+.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+stop
+\end_layout
+
+\end_inset
+
+ message sent by the 
+\series bold
+\emph on
+Opty
+\series default
+\emph default
+ module which controls the execution of this program.
+\end_layout
+
+\begin_layout Standard
+The final code of this module is like the following:
+\end_layout
+
+\begin_layout Standard
+
+\size small
+\begin_inset listings
+lstparams "basicstyle={\scriptsize\ttfamily},language=erlang"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+\size small
+-module(server).
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-export([start/1]).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-ifdef(debug_server).
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-define(DBG(X,Y,Z),io:format("[SERVER_DEBUG] ~w: ~s ~w~n", [X, Y, Z])).
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-else.
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-define(DBG(X,Y,Z), true).
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-endif.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+start(N) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    spawn(fun() -> init(N) end).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+init(N) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    ?DBG(server,"Initilizing the server for N",N),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Store = store:new(N),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Validator = validator:start(),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    server(Validator, Store).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+server(Validator, Store) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {open, Client} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            ?DBG(server,"Received an open from Client",Client),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            Client ! {transaction, Validator, Store},
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            server(Validator, Store);
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        stop ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            store:stop(Store)
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    end.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Note that the 
+\series bold
+\emph on
+Server
+\series default
+\emph default
+ after creating the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Store
+\end_layout
+
+\end_inset
+
+ and 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Validator
+\end_layout
+
+\end_inset
+
+ will only wait for responses from 
+\series bold
+\emph on
+Clients
+\series default
+\emph default
+.
+ The optimistic control will be done by the coordination of the work done
+ by 
+\series bold
+\emph on
+Handlers
+\series default
+\emph default
+, 
+\series bold
+\emph on
+Validator
+\series default
+\emph default
+ and 
+\series bold
+\emph on
+Entries
+\series default
+\emph default
+.
+\end_layout
+
+\begin_layout Subsection
+Store
+\end_layout
+
+\begin_layout Standard
+As already mentioned, 
+\series bold
+\emph on
+Store
+\series default
+\emph default
+ is an API to allow operations with the 
+\series bold
+\emph on
+Entries
+\series default
+\emph default
+ tuple, such as 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+new()
+\end_layout
+
+\end_inset
+
+ and 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lookup()
+\end_layout
+
+\end_inset
+
+.
+ Please refer to the source code of this module for more information.
+ (
+\emph on
+Nothing was changed from the original version proposed by 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "emdc_sodx5"
+
+\end_inset
+
+
+\emph default
+)
+\emph on
+.
+\end_layout
+
+\begin_layout Subsection
+Client
+\end_layout
+
+\begin_layout Standard
+The 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+ will send the afore mentioned 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{open, self()}
+\end_layout
+
+\end_inset
+
+ message to the 
+\series bold
+\emph on
+Server
+\series default
+\emph default
+ and will wait for the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{transaction, Validator, Store}
+\end_layout
+
+\end_inset
+
+ message authorizing it to start a new set of transactions.
+ It may also receive a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+stop
+\end_layout
+
+\end_inset
+
+ message from the 
+\series bold
+\emph on
+Opty
+\series default
+\emph default
+ module asking it to finish the execution.
+ In this last case it will respond back with a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{done, self()}
+\end_layout
+
+\end_inset
+
+ message to acknowledge that it's done and finished.
+\end_layout
+
+\begin_layout Standard
+When a new transaction is initialized it will first create a 
+\series bold
+\emph on
+Handler
+\series default
+\emph default
+ that is going to be linked to this 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+ (using 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+spaw_link()
+\end_layout
+
+\end_inset
+
+) and will then enter the 
+\emph on
+do_transactions
+\emph default
+ state, where while there are 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Updates
+\end_layout
+
+\end_inset
+
+ left to be done it will ask it's 
+\series bold
+\emph on
+Handler
+\series default
+\emph default
+ for 
+\emph on
+read
+\emph default
+ and 
+\emph on
+write
+\emph default
+ operations.
+ Once it's done, it will try to 
+\emph on
+commit
+\emph default
+ the modifications by send a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{commit, Ref}
+\end_layout
+
+\end_inset
+
+ to its 
+\series bold
+\emph on
+Handler
+\series default
+\emph default
+.
+ The 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Ref
+\end_layout
+
+\end_inset
+
+ is used to identify that specific operation and make sure it was confirmed
+ or not.
+ As shown on the diagram above, the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{Ref, ok}
+\end_layout
+
+\end_inset
+
+ and 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{Ref, abort}
+\end_layout
+
+\end_inset
+
+ messages confirming if the transaction could be completed will be sent
+ by the 
+\series bold
+\emph on
+Validator
+\series default
+\emph default
+ directly to the 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+ making this request.
+\end_layout
+
+\begin_layout Standard
+While coding the separated 
+\series bold
+\emph on
+Opty
+\series default
+\emph default
+ module to run on multiple machines a bug rose in the code a fix was made.
+ While waiting to receive any message outside the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+open()
+\end_layout
+
+\end_inset
+
+ state, if the system stops (action triggered on the 
+\series bold
+\emph on
+Opty
+\series default
+\emph default
+ module) the 
+\series bold
+\emph on
+Clients
+\series default
+\emph default
+ could be held waiting for responses from the 
+\series bold
+\emph on
+Handlers
+\series default
+\emph default
+, that could also be held waiting for messages from the 
+\series bold
+\emph on
+Entries
+\series default
+\emph default
+, that as already mentioned are started and stopped by the 
+\series bold
+\emph on
+Server
+\series default
+\emph default
+ module.
+ Finally catching 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+stop
+\end_layout
+
+\end_inset
+
+ messages on these parts of the code is necessary.
+\end_layout
+
+\begin_layout Standard
+The final version of the code is like the following:
+\end_layout
+
+\begin_layout Standard
+
+\size small
+\begin_inset listings
+lstparams "basicstyle={\scriptsize\ttfamily},language=erlang"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+\size small
+-module(client).
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-export([start/4]).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-ifdef(debug_client).
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-define(DBG(X,Y,Z), io:format("[CLIENT_DEBUG] ~w: ~s ~w~n", [X, Y, Z])).
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-else.
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-define(DBG(X,Y,Z), true).
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-endif.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+start(Name, Entries, Updates, Server) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    spawn(fun() -> init(Name, Entries, Updates, Server, 0, 0) end).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+init(Name, Entries, Updates, Server, Total, Ok) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    ?DBG(Name,"Initilizing Client",self()),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    open(Name, Entries, Updates, Server, Total, Ok).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+open(Name, Entries, Updates, Server, Total, Ok) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    {A1,A2,A3} = now(),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    random:seed(A1, A2, A3),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Server ! {open, self()},
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {stop, From} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            io:format("~w: Transactions TOTAL:~w, OK:~w, -> ~w % ~n",
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                      [Name, Total, Ok, 100*Ok/Total]),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            From ! {done, self()},
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            ok;
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {transaction, Validator, Store} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            ?DBG(Name,"Received a transaction message from the server!",ok),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            Handler = handler:start(self(), Validator, Store),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            do_transactions(Name, Entries, Updates, Server, Handler,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                            Total, Ok, Updates)
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+% Commit transaction
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+do_transactions(Name, Entries, Updates, Server, Handler, Total, Ok, 0) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    %io:format("~w: Commit: TOTAL ~w, OK ~w~n", [Name, Total, Ok]),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    %timer:sleep(Name*10),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Ref = make_ref(),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Handler ! {commit, Ref},
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Result = receiveCommitValue(Ref),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    if
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        Result == ok ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+           open(Name, Entries, Updates, Server, Total+1, Ok+1);
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        Result == stop ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            close(Name, Total, Ok);
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        true ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            open(Name, Entries, Updates, Server, Total+1, Ok)
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    end;
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+% Reads and Writes
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+do_transactions(Name, Entries, Updates, Server, Handler, Total, Ok, N) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    %io:format("~w: R/W: TOTAL ~w, OK ~w, N ~w~n",[Name, Total, Ok, N]),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Ref = make_ref(),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Num = random:uniform(Entries),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Handler ! {read, Ref, Num},
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Value = receiveValue(Ref),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    if
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        Value == stop ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            close(Name, Total, Ok);
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        true ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            Handler ! {write, Num, Value+1},
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            do_transactions(Name, Entries, Updates, Server, Handler, Total,
+ Ok, N-1)
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+receiveCommitValue(Ref) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    ?DBG(self(),"Waiting to receive commits",waiting),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {Ref,Value} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            ?DBG(self(),"Got the commit",ok),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            Value;
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {stop, From} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            ?DBG(self(),"Got a stop from Opty",stop),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            From ! {done, self()},
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            stop
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+receiveValue(Ref) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    ?DBG(self(),"Waiting to receive the Value",waiting),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {value,Ref,Value} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            ?DBG(self(),"Got the value",ok),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            Value;
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {stop, From} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            ?DBG(self(),"Got a stop from Opty",stop),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            From ! {done, self()},
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            stop
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+close(Name, Total, Ok) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    io:format("~w: Transactions TOTAL:~w, OK:~w, -> ~w % ~n",
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+              [Name, Total, Ok, 100*Ok/Total]),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    ok.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Also a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+close()
+\end_layout
+
+\end_inset
+
+ function was added to be used when a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+stop
+\end_layout
+
+\end_inset
+
+ is catch outside the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+open()
+\end_layout
+
+\end_inset
+
+ state.
+\end_layout
+
+\begin_layout Subsection
+Handler
+\end_layout
+
+\begin_layout Standard
+Each 
+\series bold
+\emph on
+Handler
+\series default
+\emph default
+ is going to be created for every new set of transactions a 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+ is going to perform.
+ It will be linked to the 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+ process by the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+spawn_link()
+\end_layout
+
+\end_inset
+
+ function call and will be initialized with the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Validator
+\end_layout
+
+\end_inset
+
+ and 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Store
+\end_layout
+
+\end_inset
+
+ elements that the 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+ received from the 
+\series bold
+\emph on
+Server
+\series default
+\emph default
+ once it was starting its execution.
+\end_layout
+
+\begin_layout Standard
+The 
+\series bold
+\emph on
+Handler
+\series default
+\emph default
+ will then wait for 5 possible messages:
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{read, Ref, N}
+\end_layout
+
+\end_inset
+
+ message from its 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+ trying to read a value from the 
+\series bold
+\emph on
+Entry
+\series default
+\emph default
+ 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+N
+\end_layout
+
+\end_inset
+
+.
+ 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Ref
+\end_layout
+
+\end_inset
+
+ will contain unique reference number to sing this 
+\emph on
+read
+\emph default
+ operation.
+ This reference number is going to be used later when the 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+ will try to commit its modifications.
+ If the 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+ is requesting an 
+\series bold
+\emph on
+Entry
+\series default
+\emph default
+ for the first time the 
+\series bold
+\emph on
+Handler
+\series default
+\emph default
+ will 
+\emph on
+lookup
+\emph default
+ for that one on its 
+\series bold
+\emph on
+Store
+\series default
+\emph default
+ tuple and will request that 
+\series bold
+\emph on
+Entry
+\series default
+\emph default
+ for the value it contains\SpecialChar \@.
+ Otherwise, for already requested values the 
+\series bold
+\emph on
+Handler
+\series default
+\emph default
+ will simply send the cached value it already had stored.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{Ref, Entry, Value, Time}
+\end_layout
+
+\end_inset
+
+ message sent by the 
+\series bold
+\emph on
+Entry
+\series default
+\emph default
+ it requested the value for when doing it for the first time.
+ Now having the value it's send to the 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{write, N, Value}
+\end_layout
+
+\end_inset
+
+ message from the 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+, asking it to modify the value of a certain 
+\series bold
+\emph on
+Entry
+\series default
+\emph default
+.
+ This 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Value
+\end_layout
+
+\end_inset
+
+ is not gonna be immediately updated on the corresponding 
+\series bold
+\emph on
+Entry
+\series default
+\emph default
+, it will be kept in a list by the 
+\series bold
+\emph on
+Handler
+\series default
+\emph default
+ to be committed later on when the 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+ asks for it.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{commit, Ref}
+\end_layout
+
+\end_inset
+
+ message from a 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+, asking for the modifications to be committed and the values updated on
+ the corresponding 
+\series bold
+\emph on
+Entries
+\series default
+\emph default
+.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+abort
+\end_layout
+
+\end_inset
+
+ message.
+ (
+\emph on
+Apparently not sent by anyone)
+\end_layout
+
+\begin_layout Standard
+The final version of the code is like the following:
+\end_layout
+
+\begin_layout Standard
+
+\size small
+\begin_inset listings
+lstparams "basicstyle={\scriptsize\ttfamily},language=erlang"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+\size small
+-module(handler).
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-export([start/3]).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-ifdef(debug_handler).
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-define(DBG(X,Y,Z), io:format("[HANDLER_DEBUG] ~w: ~s ~w~n", [X, Y, Z])).
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-else.
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-define(DBG(X,Y,Z), true).
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-endif.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+start(Client, Validator, Store) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    spawn_link(fun() -> init(Client, Validator, Store) end).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+init(Client, Validator, Store) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    handler(Client, Validator, Store, [], []).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+handler(Client, Validator, Store, Reads, Writes) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    ?DBG(Client,"Waiting on Handler state",waiting),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {read, Ref, N} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            case lists:keysearch(N, 1, Writes) of
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                {value, {N, _, Value}} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                    ?DBG(Client,"Existing read entry",Value),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                    Client ! {value, Ref, Value},
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                    handler(Client, Validator, Store, Reads, Writes);
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                false ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                    ?DBG(Client,"New entry requested",N),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                    Entry = store:lookup(N, Store),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                    Entry ! {read, Ref, self()},
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                    handler(Client, Validator, Store, Reads, Writes)
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            end;
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {Ref, Entry, Value, Time} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            ?DBG(Client,"Received the read value from the Entry:",Value),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            Client ! {value, Ref, Value},
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            handler(Client, Validator, Store, [{Entry, Time}|Reads], Writes);
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {write, N, Value} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            ?DBG(Client,"write received for entry N",N),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            Entry = store:lookup(N, Store),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            Added = lists:keystore(N, 1, Writes,{N, Entry, Value}),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            handler(Client, Validator, Store, Reads, Added);
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {commit, Ref} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            ?DBG(Client,"Sending a validate to commit the transactions",Ref),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            Validator ! {validate, Ref, Reads, Writes, Client};
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        abort ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            ?DBG(Client,"abort received!",ok),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            ok
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    end.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Validator
+\end_layout
+
+\begin_layout Standard
+The 
+\series bold
+\emph on
+Validator
+\series default
+\emph default
+ will be 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+spawn_link()
+\end_layout
+
+\end_inset
+
+'ed to the 
+\series bold
+\emph on
+Server
+\series default
+\emph default
+ and will simply wait for 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{validate, Ref, Reads, Writes, Client}
+\end_layout
+
+\end_inset
+
+ messages from 
+\series bold
+\emph on
+Handlers
+\series default
+\emph default
+.
+ Once it receives one of these messages it will first check if all the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Reads
+\end_layout
+
+\end_inset
+
+ don't conflict with any other 
+\emph on
+read
+\emph default
+ performed on each 
+\series bold
+\emph on
+Entry
+\series default
+\emph default
+ affected by these operations by sending 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{check, Tag, Time, Self}
+\end_layout
+
+\end_inset
+
+ messages and waiting for 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{Tag, ok}
+\end_layout
+
+\end_inset
+
+ confirming the consistent state of these operations.
+ Otherwise it will receive a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{Tag, abort}
+\end_layout
+
+\end_inset
+
+ for any of the 
+\series bold
+\emph on
+Entries
+\series default
+\emph default
+ and the whole validation is aborted and the requesting 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+ will receive a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{Ref, abort}
+\end_layout
+
+\end_inset
+
+ message from it.
+\end_layout
+
+\begin_layout Standard
+If it succeeds, then all the write operations are sent to the 
+\series bold
+\emph on
+Entries
+\series default
+\emph default
+ and the 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+ will receive a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{Ref, ok}
+\end_layout
+
+\end_inset
+
+ message from the 
+\series bold
+\emph on
+Validator
+\series default
+\emph default
+.
+ The final version of this code is like the following:
+\end_layout
+
+\begin_layout Standard
+
+\size small
+\begin_inset listings
+lstparams "basicstyle={\scriptsize\ttfamily},language=erlang"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+-module(validator).
+\end_layout
+
+\begin_layout Plain Layout
+
+-export([start/0]).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+-ifdef(debug).
+\end_layout
+
+\begin_layout Plain Layout
+
+-define(DBG(X,Y,Z), io:format("[VALIDATOR_DEBUG] ~w: ~s ~w~n", [X, Y, Z])).
+\end_layout
+
+\begin_layout Plain Layout
+
+-else.
+\end_layout
+
+\begin_layout Plain Layout
+
+-define(DBG(X,Y,Z), true).
+\end_layout
+
+\begin_layout Plain Layout
+
+-endif.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+start() ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    spawn_link(fun() -> init() end).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+init()->
+\end_layout
+
+\begin_layout Plain Layout
+
+    ?DBG(validator,"Initializing validator",ok),
+\end_layout
+
+\begin_layout Plain Layout
+
+    validator().
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+validator() ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+        {validate, Ref, Reads, Writes, Client} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            ?DBG(validator,"Received a validate from client",Client),
+\end_layout
+
+\begin_layout Plain Layout
+
+            case validate(Reads) of
+\end_layout
+
+\begin_layout Plain Layout
+
+                ok ->
+\end_layout
+
+\begin_layout Plain Layout
+
+                    update(Writes),
+\end_layout
+
+\begin_layout Plain Layout
+
+                    Client ! {Ref, ok};
+\end_layout
+
+\begin_layout Plain Layout
+
+                abort ->
+\end_layout
+
+\begin_layout Plain Layout
+
+                    Client ! {Ref, abort}
+\end_layout
+
+\begin_layout Plain Layout
+
+            end,
+\end_layout
+
+\begin_layout Plain Layout
+
+            validator();
+\end_layout
+
+\begin_layout Plain Layout
+
+        _Old ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            validator()
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+update(Writes) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    ?DBG(validator,"Commiting writes!",ok),
+\end_layout
+
+\begin_layout Plain Layout
+
+    lists:map(fun({_, Entry, Value}) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+                      Entry ! {write, Value}
+\end_layout
+
+\begin_layout Plain Layout
+
+              end,
+\end_layout
+
+\begin_layout Plain Layout
+
+              Writes).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+validate(Reads) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    {N, Tag} = send_checks(Reads),
+\end_layout
+
+\begin_layout Plain Layout
+
+    check_reads(N, Tag).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+send_checks(Reads) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    Tag = make_ref(),
+\end_layout
+
+\begin_layout Plain Layout
+
+    Self = self(),
+\end_layout
+
+\begin_layout Plain Layout
+
+    N = length(Reads),
+\end_layout
+
+\begin_layout Plain Layout
+
+    lists:map(fun({Entry, Time}) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+                      Entry ! {check, Tag, Time, Self}
+\end_layout
+
+\begin_layout Plain Layout
+
+              end,
+\end_layout
+
+\begin_layout Plain Layout
+
+              Reads),
+\end_layout
+
+\begin_layout Plain Layout
+
+    {N, Tag}.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+check_reads(0, Tag) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    ?DBG(validator,"All reads were ok for Tag",Tag),
+\end_layout
+
+\begin_layout Plain Layout
+
+    ok;
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+check_reads(N, Tag) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+        {Tag, ok} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            check_reads(N-1, Tag);
+\end_layout
+
+\begin_layout Plain Layout
+
+        {Tag, abort} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            ?DBG(validator,"Conflicting reads for Tag",Tag),
+\end_layout
+
+\begin_layout Plain Layout
+
+            abort
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Entry
+\end_layout
+
+\begin_layout Standard
+An 
+\series bold
+\emph on
+Entry
+\series default
+\emph default
+ is a storage unit that will store a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Value
+\end_layout
+
+\end_inset
+
+, and the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Time
+\end_layout
+
+\end_inset
+
+ of the last 
+\emph on
+read
+\emph default
+ operation, which is in fact a unique reference number (not actually a time
+ value).
+ This element will wait for 4 possible messages:
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{read, Ref, From}
+\end_layout
+
+\end_inset
+
+ message from a 
+\series bold
+\emph on
+Handler
+\series default
+\emph default
+ which is answered back with the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Value
+\end_layout
+
+\end_inset
+
+ and the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Time
+\end_layout
+
+\end_inset
+
+ of the last write operation (or when it was initialized).
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{write, New}
+\end_layout
+
+\end_inset
+
+ message from a 
+\series bold
+\emph on
+Handler
+\series default
+\emph default
+, updating its current 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Value
+\end_layout
+
+\end_inset
+
+ and generating a new reference number as 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Time
+\end_layout
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{check, Ref, Time, From}
+\end_layout
+
+\end_inset
+
+ message from a 
+\series bold
+\emph on
+Handler
+\series default
+\emph default
+ that will verify if the desired commit operation from a 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+ can be performed.
+ It's done by comparing the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Time
+\end_layout
+
+\end_inset
+
+ of the remote data with the local one (in the 
+\series bold
+\emph on
+Entry
+\series default
+\emph default
+).
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+stop
+\end_layout
+
+\end_inset
+
+ message from the 
+\series bold
+\emph on
+Server
+\series default
+\emph default
+, using the 
+\series bold
+\emph on
+Store
+\series default
+\emph default
+ API function 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+store:stop()
+\end_layout
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+Another modification was done in our version to use pattern matching instead
+ of 
+\series bold
+\emph on
+if
+\series default
+\emph default
+ expressions, that looks more natural when programming a functional language.
+\end_layout
+
+\begin_layout Standard
+The final version of this code is like the following:
+\end_layout
+
+\begin_layout Standard
+
+\size small
+\begin_inset listings
+lstparams "basicstyle={\scriptsize\ttfamily},language=erlang"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+\size small
+-module(entry).
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-export([new/1]).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-ifdef(debug).
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-define(DBG(X,Y,Z), io:format("[ENTRY_DEBUG] ~w: ~s ~w~n", [X, Y, Z])).
+ 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-else.
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-define(DBG(X,Y,Z), true).
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-endif.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+new(Value) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    spawn_link(fun() -> init(Value) end).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+init(Value) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    entry(Value, make_ref()).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+entry(Value, Time) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {read, Ref, From} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            ?DBG(self(),"Received a read with Ref",Ref),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            From ! {Ref, self(), Value, Time},
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            entry(Value, Time);
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {write, New} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            ?DBG(self(),"Received a write with Value",New),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            entry(New, make_ref());
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {check, Ref, Time, From} -> %% use pattern matching is more natural
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            ?DBG(self(),"[OK] Received a check for {Ref,Time}",{Ref,Time}),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            From ! {Ref, ok},
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            entry(Value, Time);
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {check, Ref, _Readtime, From} -> %% Readtime is not used, we discard
+ it
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            ?DBG(self(),"[Abort] Received a check for {Ref,Time}",{Ref,Time}),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            From ! {Ref, abort},
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            entry(Value, Time);
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        stop ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            ?DBG(self(),"Stop",[]),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            ok
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    end.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Opty
+\end_layout
+
+\begin_layout Standard
+This module simply executes the code, creating the 
+\series bold
+\emph on
+Server
+\series default
+\emph default
+ and the requested number of 
+\series bold
+\emph on
+Clients
+\series default
+\emph default
+ that will have access to a certain number of 
+\series bold
+\emph on
+Entries
+\series default
+\emph default
+, will perform a desired number of 
+\series bold
+\emph on
+Updates
+\series default
+\emph default
+ per transaction and the whole system will run for a desired 
+\series bold
+\emph on
+Time
+\series default
+\emph default
+.
+ Please refer to the source code for implementation information.
+ (
+\emph on
+Nothing was changed from what was proposed by 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "emdc_sodx5"
+
+\end_inset
+
+
+\emph default
+).
 \end_layout
 
 \begin_layout Section
@@ -109,7 +3319,61 @@ Evaluation
 \end_layout
 
 \begin_layout Standard
-asd
+After concluding the implementation of this code we can run it with different
+ number of parameters and as 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:Opty-executing"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\align center
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename seminar5/opty_simple.png
+	lyxscale 50
+	scale 45
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Opty executing
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Opty-executing"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Section
