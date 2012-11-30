@@ -3327,7 +3327,7 @@ reference "fig:Opty-executing"
 
 \end_inset
 
-
+ shows, the system works as expected without the use of any locking.
 \end_layout
 
 \begin_layout Standard
@@ -3376,8 +3376,1889 @@ name "fig:Opty-executing"
 
 \end_layout
 
+\begin_layout Standard
+Further discussion with multiple numbers of 
+\series bold
+\emph on
+Entries
+\series default
+\emph default
+, different duration of each transaction on the 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+, a limited view of the total number of 
+\series bold
+\emph on
+Entries
+\series default
+\emph default
+ by each 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+ will be discussed later on this document.
+\end_layout
+
+\begin_layout Standard
+But also, executions of the system with a high number of 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+ and 
+\series bold
+\emph on
+Updates
+\series default
+\emph default
+, vary the number of possible total transactions concluded since conflicting
+ commits will be much more frequent.
+\end_layout
+
 \begin_layout Section
 Open questions
+\end_layout
+
+\begin_layout Standard
+
+\bar under
+Note
+\bar default
+: the source code for this section is in both 
+\emph on
+src/
+\emph default
+ and 
+\emph on
+srcbis/
+\emph default
+ directories that follow this document.
+\end_layout
+
+\begin_layout Standard
+For this section, to automate the requested tests we modified heavily the
+ source code of the system.
+ We introduced the 
+\series bold
+\emph on
+Statistic
+\series default
+\emph default
+ module.
+ This will be a thread that will collect the execution results from the
+ existing 
+\series bold
+\emph on
+Clients
+\series default
+\emph default
+, calculate the average of their values for each round of execution and
+ present it at the end.
+ It will wait for 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{statistic, Round, Total, OK}
+\end_layout
+
+\end_inset
+
+ messages that for each 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Round
+\end_layout
+
+\end_inset
+
+ it will calculate the average of 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Total
+\end_layout
+
+\end_inset
+
+ (total number of operations) and 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Ok
+\end_layout
+
+\end_inset
+
+ (number of successful operations) from all the 
+\series bold
+\emph on
+Clients
+\series default
+\emph default
+.
+ The source code of this module is like the following:
+\end_layout
+
+\begin_layout Standard
+
+\size small
+\begin_inset listings
+lstparams "basicstyle={\scriptsize\ttfamily},language=erlang"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+\size small
+-module(statistic).
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-export([start/0]).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-ifdef(debug_statistic).
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-define(DBG(X,Y,Z), io:format("[STATISTIC_DEBUG] ~w: ~s ~w~n", [X, Y, Z])).
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-else.
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-define(DBG(X,Y,Z), true).
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-endif.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+start() ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    spawn(fun() ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                  init()
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+          end).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+init() ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    ?DBG(statistic,"Starting the statistic thread",ok),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    collect(1).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+collect(Round) -> %% Should only be called on the first execution
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    ?DBG(statistic,"Waiting for new data",waiting),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {statistic, Round, Total, Ok} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            ?DBG(statistic,"New Round started:",Round),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            Data = {Round, Total, Ok},
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            collect(Round, Data, []);
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        stop -> %% Nothing to return, since we have no data
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            ?DBG(statistic,"Got a stop",exit),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            ok
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+collect(Round, Data, Table) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        %% New execution round
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {statistic, NewRound, Total, Ok} when NewRound > Round ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            ?DBG(statistic,"New Round started:",NewRound),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            collect(NewRound, {NewRound, Total, Ok}, [Data|Table]);
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {statistic, Round, Total, Ok} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            {_, Total2, Ok2} = Data,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            collect(Round, {Round, (Total2+Total)/2, (Ok2+Ok)/2}, Table);
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {statistic, NewRound, _, _} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            ?DBG(statistic,"FATAL! Should not receive delayed statistics!",NewRo
+und),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            false;
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        stop ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            ?DBG(statistic,"Received a stop! Presenting the data!",stop),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            presentData([Data|Table])
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+presentData(Table) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    io:format("Printing the Table of statistics~n~n"),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    lists:map(fun(X) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                      {Round, Total, Ok} = X,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                      io:format("Round ~w TOTAL: ~w, OK: ~w, -> ~w % ~n",
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                                [Round, Total, Ok, 100*Ok/Total])
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+              end,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+              Table).
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+This thread is going to be created and registered by the 
+\series bold
+\emph on
+Opty
+\series default
+\emph default
+ which was also modified.
+ A new function 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+starttests()
+\end_layout
+
+\end_inset
+
+ was added because a inside it a big table containing the desired execution
+ parameters can be set.
+ Also the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+start()
+\end_layout
+
+\end_inset
+
+ was then modified to receive a few other parameters:
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Round
+\end_layout
+
+\end_inset
+
+ the number of the current round used by the 
+\series bold
+\emph on
+Statistic
+\series default
+\emph default
+ thread.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Sleep
+\end_layout
+
+\end_inset
+
+ the number of time each operation will take inside the 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+.
+ Which means the time between 
+\emph on
+read
+\emph default
+ operations and a 
+\emph on
+commit
+\emph default
+ to that same 
+\series bold
+\emph on
+Entry
+\series default
+\emph default
+.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Read
+\end_layout
+
+\end_inset
+
+ the number of 
+\emph on
+read
+\emph default
+ operations that will be executed per transaction.
+ On the original code one 
+\emph on
+read
+\emph default
+ and one 
+\emph on
+write
+\emph default
+ were being executed per transaction, with this we can vary this number.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Write
+\end_layout
+
+\end_inset
+
+ same description as the previous, but about 
+\emph on
+write
+\emph default
+ operations.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Slice
+\end_layout
+
+\end_inset
+
+ the part of the total number of 
+\series bold
+\emph on
+Entries
+\series default
+\emph default
+ each 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+ will be able to 
+\emph on
+see
+\emph default
+ during each transaction.
+ On the original code, the 
+\series bold
+\emph on
+Clients
+\series default
+\emph default
+ are able to access all the pool of 
+\series bold
+\emph on
+Entries
+\series default
+\emph default
+ available.
+\end_layout
+
+\begin_layout Standard
+The final version of the 
+\series bold
+\emph on
+Opty
+\series default
+\emph default
+ module after these changes, is like the following:
+\end_layout
+
+\begin_layout Standard
+
+\size small
+\begin_inset listings
+lstparams "basicstyle={\scriptsize\ttfamily},language=erlang"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+\size small
+-module(opty).
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-export([stop/1, starttests/0]).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+start(Clients, Entries, Updates, Time, Round, Sleep, Read, Write, Slice)
+ ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    register(s, server:start(Entries)),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    L = startClients(Clients, [], Entries, Updates, Round, Sleep,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                     Read, Write, Slice),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    io:format("#~w Starting: ~w CLIENTS, ~w ENTRIES, " ++
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+              "~w UPDATES PER TRANSACTION, DURATION ~w s, " ++
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+              "TRANSACTION DURATION ~w ms, READ ~w, WRITE ~w, SLICE ~w~n",
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+              [Round, Clients, Entries, Updates, Time, Sleep,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+               Read, Write, Slice]),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    timer:sleep(Time*1000),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    stop(L).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+starttests() ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    register(stat, statistic:start()),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    %%       {Clients, Entries, Updates, Time, Round, Sleep, Read, Write,
+ Slice}
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Tests = [{      8,       1,       4,   20,     1,     0,    1,     1,
+     1},
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+             (...)
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+             {      8,      48,       4,   20,    48,     0,    1,     1,0.0833}]
+,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    lists:map(fun(T) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                      {Clients, Entries, Updates, Time, Round, Sleep,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                       Read, Write, Slice} = T,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                      start(Clients, Entries, Updates, Time, Round, Sleep,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                            Read, Write, Slice),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                      %% Small sleep to avoid CPU overheating
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                      timer:sleep(Time*350)
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+              end,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+              Tests),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    timer:sleep(5000),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    stat ! stop.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+stop(L) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    io:format("Stopping...~n"),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    stopClients(L),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    s ! stop,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    unregister(s).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+startClients(0,L,_,_,_,_,_,_,_) -> L;
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+startClients(Clients, L, Entries, Updates, Round, Sleep, Read, Write, Slice)
+ ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Pid = client:start(Clients, Entries, Updates, s, Round, Sleep,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                       Read, Write, Slice),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    startClients(Clients-1, [Pid|L], Entries, Updates, Round, Sleep,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                 Read, Write, Slice).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+stopClients([]) -> ok;
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+stopClients([Pid|L]) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Pid ! {stop, self()},
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {done, Pid} -> ok
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    end,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    stopClients(L).
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+ module was also modified to fit the modifications of the 
+\series bold
+\emph on
+Opty
+\series default
+\emph default
+ module as well as to send information relative to the execution to the
+ 
+\series bold
+\emph on
+Statistic
+\series default
+\emph default
+ thread instead of the terminal, as on the original code.
+\end_layout
+
+\begin_layout Standard
+Now when receiving a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+stop
+\end_layout
+
+\end_inset
+
+ from the 
+\series bold
+\emph on
+Opty
+\series default
+\emph default
+ it will send a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{statistic, Round, Total, Ok}
+\end_layout
+
+\end_inset
+
+ message to the now registered 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+stat
+\end_layout
+
+\end_inset
+
+ 
+\series bold
+\emph on
+Statistic
+\series default
+\emph default
+ thread.
+ It will now use the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Read
+\end_layout
+
+\end_inset
+
+ and 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Write
+\end_layout
+
+\end_inset
+
+ values to send a different number of 
+\emph on
+read
+\emph default
+ and 
+\emph on
+write
+\emph default
+ operations per transaction.
+ To do it, the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+do_transactions()
+\end_layout
+
+\end_inset
+
+ function was modified to count down the number of both remaining operations.
+ When there are both 
+\emph on
+read
+\emph default
+ and 
+\emph on
+write
+\emph default
+ operations to be done, the code stayed the same, but of course when there
+ are only one of them, the other is not processed.
+ Also to provide the use of the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Slice
+\end_layout
+
+\end_inset
+
+ variable, for each transaction a new interval of visible 
+\series bold
+\emph on
+Entries
+\series default
+\emph default
+ is calculated.
+ To do it, we multiple the total number of 
+\series bold
+\emph on
+Entries
+\series default
+\emph default
+ by 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Slice
+\end_layout
+
+\end_inset
+
+, let's call it 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+SliceSize
+\end_layout
+
+\end_inset
+
+, we then randomly choose a number to be our 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+MinEntry
+\end_layout
+
+\end_inset
+
+ as the minimal 
+\series bold
+\emph on
+Entry
+\series default
+\emph default
+ id it can access.
+ Finally with these two number for that transaction, the 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+ will only be able to access the interval of 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+SliceSize
+\end_layout
+
+\end_inset
+
+ where 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+MinEntry
+\end_layout
+
+\end_inset
+
+ is the smallest 
+\series bold
+\emph on
+Entry
+\series default
+\emph default
+ id it can get.
+ Of course that some boundary checks are also made.
+\end_layout
+
+\begin_layout Standard
+The final version of these modified parts of this module, will look like
+ the following:
+\end_layout
+
+\begin_layout Standard
+
+\size small
+\begin_inset listings
+lstparams "basicstyle={\scriptsize\ttfamily},language=erlang"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+\size small
+(...)
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+open(Name, Entries, Updates, Server, Total, Ok, Round, Sleep,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+     Read, Write, Slice) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    {A1,A2,A3} = now(),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    random:seed(A1, A2, A3),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Server ! {open, self()},
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {stop, From} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            %io:format("~w: Transactions TOTAL:~w, OK:~w, -> ~w % ~n",
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            %          [Name, Total, Ok, 100*Ok/Total]),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            stat ! {statistic, Round, Total, Ok},
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            From ! {done, self()},
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            ok;
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {transaction, Validator, Store} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            ?DBG(Name,"Received a transaction message from the server!",ok),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            Handler = handler:start(self(), Validator, Store),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            MinEntry = random:uniform(Entries),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            SliceSize = round(Entries * Slice),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            if
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                (MinEntry + SliceSize) > Entries ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                    Entries2 = (Entries - SliceSize),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                    do_transactions(Name, Entries, Entries2, Updates, Server,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                                    Handler, Total, Ok, Updates, Round,
+ Sleep,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                                    Read, Read, Write, Write, Slice);
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                true ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                    Entries2 = MinEntry,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                    do_transactions(Name, Entries, Entries2, Updates, Server,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                                    Handler, Total, Ok, Updates, Round,
+ Sleep,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                                    Read, Read, Write, Write, Slice)
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            end
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+% Commit transaction
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+do_transactions(Name, Entries, _, Updates, Server, Handler, Total, Ok, 0,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                Round, Sleep, Read, _, Write, _, Slice) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    %%%
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    %% This line is going to be used to modify the amount of time each
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    %% transaction will take
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    %%%
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    timer:sleep(Sleep),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Ref = make_ref(),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Handler ! {commit, Ref},
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Result = receiveCommitValue(Ref),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    if
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        Result == ok ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            open(Name, Entries, Updates, Server, Total+1, Ok+1, Round, Sleep,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                 Read, Write, Slice);
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        Result == stop ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            close(Name, Total, Ok, Round);
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        true ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            open(Name, Entries, Updates, Server, Total+1, Ok, Round, Sleep,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                 Read, Write, Slice)
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    end;
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+% Reads and Writes
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+do_transactions(Name, Entries, MyEntries, Updates, Server, Handler, Total,
+ Ok,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                N, Round, Sleep, Read, 0, Write, 0, Slice) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    do_transactions(Name, Entries, MyEntries, Updates, Server, Handler,
+ Total,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                    Ok, N-1, Round, Sleep, Read, Read, Write, Write, Slice);
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+do_transactions(Name, Entries, MyEntries, Updates, Server, Handler, Total,
+ Ok,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                N, Round, Sleep, Read, R, Write, 0, Slice) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Ref = make_ref(),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    RndNum = random:uniform(round(Entries*Slice)),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Num = MyEntries + RndNum,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Handler ! {read, Ref, Num},
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Value = receiveValue(Ref),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    if
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        Value == stop ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            close(Name, Total, Ok, Round);
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        true ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            do_transactions(Name, Entries, MyEntries, Updates, Server, Handler,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                         Total, Ok, N, Round, Sleep, Read, R-1, Write, 0,
+ Slice)
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    end;
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+do_transactions(Name, Entries, MyEntries, Updates, Server, Handler, Total,
+ Ok,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                N, Round, Sleep, Read, 0, Write, W, Slice) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    RndNum = random:uniform(round(Entries*Slice)),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Num = MyEntries + RndNum,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Handler ! {write, Num, Name+Num+1},
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    do_transactions(Name, Entries, MyEntries, Updates, Server, Handler,
+ Total,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                    Ok, N, Round, Sleep, Read, 0, Write, W-1, Slice);
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+do_transactions(Name, Entries, MyEntries, Updates, Server, Handler, Total,
+ Ok,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                N, Round, Sleep, Read, R, Write, W, Slice) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Ref = make_ref(),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    RndNum = random:uniform(round(Entries*Slice)),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Num = MyEntries + RndNum,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    ?DBG(Name,"{RndNum,Num}",{RndNum,Num}),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Handler ! {read, Ref, Num},
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Value = receiveValue(Ref),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    if
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        Value == stop ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            close(Name, Total, Ok, Round);
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        true ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            Handler ! {write, Num, Value+1},
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            do_transactions(Name, Entries, MyEntries, Updates, Server, Handler,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                       Total, Ok, N, Round, Sleep, Read, R-1, Write, W-1,
+ Slice)
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+(...)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Finally the questions are the following:
 \end_layout
 
 \begin_layout Itemize
@@ -3396,7 +5277,170 @@ Different number of entries in the store.
 \end_layout
 
 \begin_layout Standard
-asd
+Executing with different number of 
+\series bold
+\emph on
+Entries
+\series default
+\emph default
+ and keeping the other parameters constant, as this number rises in relation
+ to the total number of transactions made per iteration (
+\series bold
+\emph on
+Clients
+\series default
+\emph default
+ * 
+\series bold
+\emph on
+Update
+\series default
+\emph default
+), the number of successful transactions increase.
+ And this was of course expected because with very few available 
+\series bold
+\emph on
+Entries
+\series default
+\emph default
+ the chances of conflicting operations are much higher.
+\end_layout
+
+\begin_layout Standard
+The following values come from the execution of this modified version of
+ the code for benchmarking:
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 12 TOTAL: 115209.984375, OK: 78055.484375, -> 67.7506249119 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 11 TOTAL: 114801.2578125, OK: 72407.7265625, -> 63.0722414912 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 10 TOTAL: 124077.6796875, OK: 68608.21875, -> 55.2945694364 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 9 TOTAL: 126521.859375, OK: 62901.3125, -> 49.71576675 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 8 TOTAL: 130798.5859375, OK: 55199.0703125, -> 42.20158032815 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 7 TOTAL: 133990.109375, OK: 49639.734375, -> 37.0473123774 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 6 TOTAL: 136016.6015625, OK: 42315.8203125, -> 31.1107760570 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 5 TOTAL: 148077.796875, OK: 34185.4453125, -> 23.08613852578 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 4 TOTAL: 149645.9375, OK: 30995.2734375, -> 20.71240553222 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 3 TOTAL: 159031.1640625, OK: 28995.5078125, -> 18.23259483977 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 2 TOTAL: 178410.8125, OK: 29259.0390625, -> 16.39981268652 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 1 TOTAL: 199755.9765625, OK: 33719.5625, -> 16.88037728846 %
+\end_layout
+
+\begin_layout Standard
+And the 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:Multiple-Entries"
+
+\end_inset
+
+ shows a chart showing the relation between the number of 
+\series bold
+\emph on
+Entries
+\series default
+\emph default
+ and the percentage of successful operations.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename seminar5/chart_entries.png
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Multiple Entries
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Multiple-Entries"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Itemize
@@ -3407,7 +5451,142 @@ Different duration of the transactions (e.g.
 \end_layout
 
 \begin_layout Standard
-asd
+By increasing the duration of the transactions the total number of transactions
+ decrease.
+ That's because now, each client is taking longer to decide when to finally
+ commit the changes, causing more conflicting operations tough the ratio
+ between Total and OK (successful) stays the same.
+\end_layout
+
+\begin_layout Standard
+These are the values for this execution:
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 24 TOTAL: 647.3515625, OK: 256.0390625, -> 39.5517794861 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 23 TOTAL: 1054.21875, OK: 426.46875, -> 40.45353490440 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 22 TOTAL: 1333.2421875, OK: 553.1484375, -> 41.4889689724 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 21 TOTAL: 1815.640625, OK: 733.5390625, -> 40.4011153088 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 20 TOTAL: 1992.703125, OK: 845.2265625, -> 42.4160805438 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 19 TOTAL: 2494.5859375, OK: 1073.1953125, -> 43.0209798093 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 18 TOTAL: 3307.203125, OK: 1402.7421875, -> 42.4147575604 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 17 TOTAL: 3934.234375, OK: 1721.046875, -> 43.74540789782 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 16 TOTAL: 4914.4453125, OK: 2127.953125, -> 43.2999655034 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 15 TOTAL: 6473.9765625, OK: 2806.609375, -> 43.3521707702 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 14 TOTAL: 9751.0390625, OK: 4383.546875, -> 44.95466428657 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 13 TOTAL: 124902.1953125, OK: 62190.5390625, -> 49.7913899006 %
+\end_layout
+
+\begin_layout Standard
+And the
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:Different-duration"
+
+\end_inset
+
+ shows a chart showing the relation between the duration of the transactions
+ and the total number of them.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename seminar5/chart_sleep.png
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Different duration
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Different-duration"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Itemize
@@ -3417,7 +5596,168 @@ Different ratio of read and write operations per transaction.
 \end_layout
 
 \begin_layout Standard
-asd
+As the number of 
+\emph on
+read
+\emph default
+ operations decrease in relation to the number of 
+\emph on
+write
+\emph default
+ operations, the total number of transactions increase.
+ That can be explained by the fact that 
+\emph on
+read
+\emph default
+ operations need an response from the given 
+\series bold
+\emph on
+Entry
+\series default
+\emph default
+ with the requested value and also before committing all these 
+\emph on
+read
+\emph default
+ operations will be validated, while the 
+\emph on
+write
+\emph default
+ operations are less costly.
+\end_layout
+
+\begin_layout Standard
+These are the values for this execution:
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 36 TOTAL: 60987.765625, OK: 60987.765625, -> 100.0 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 35 TOTAL: 60792.1484375, OK: 11867.640625, -> 19.52166674484 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 34 TOTAL: 51427.546875, OK: 7854.3671875, -> 15.2726849028 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 33 TOTAL: 45216.9296875, OK: 6240.4140625, -> 13.80105660784 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 32 TOTAL: 40087.703125, OK: 5459.8359375, -> 13.61972752710 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 31 TOTAL: 33719.984375, OK: 4598.1171875, -> 13.63617828633 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 30 TOTAL: 31804.9296875, OK: 4383.359375, -> 13.78201246809 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 29 TOTAL: 26702.8984375, OK: 3662.75, -> 13.71667577050 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 28 TOTAL: 24525.375, OK: 3336.984375, -> 13.60625219797 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 27 TOTAL: 23135.4765625, OK: 3362.6484375, -> 14.53459767044 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 26 TOTAL: 20537.5, OK: 3717.5703125, -> 18.10137705416 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 25 TOTAL: 17045.6015625, OK: 17045.6015625, -> 100.0 %
+\end_layout
+
+\begin_layout Standard
+And the 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:Read/Write-ratio"
+
+\end_inset
+
+ shows a chart showing the relation between the number of 
+\emph on
+reads
+\emph default
+ operations and the total number of transactions.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename seminar5/chart_ratio.png
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Read/Write ratio
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Read/Write-ratio"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Itemize
@@ -3429,7 +5769,176 @@ Different percentage of modified entries with respect to the total number
 \end_layout
 
 \begin_layout Standard
-asd
+When a 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+ has a smaller view of the whole pool of 
+\series bold
+\emph on
+Entries
+\series default
+\emph default
+ available the ratio of total completed transactions is also higher.
+ That can be explained by the fact that when each 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+ can reach a smaller number of 
+\series bold
+\emph on
+Entries
+\series default
+\emph default
+, the chances of conflicting operations between the clients decreases when
+ compared to the whole system view
+\end_layout
+
+\begin_layout Standard
+These are the values for this execution:
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 48 TOTAL: 141994.765625, OK: 110542.734375, -> 77.8498657245 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 47 TOTAL: 135576.0078125, OK: 80563.5546875, -> 59.4231649001 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 46 TOTAL: 131083.484375, OK: 69761.9140625, -> 53.2194535376 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 45 TOTAL: 131141.140625, OK: 66240.953125, -> 50.5111918420 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 44 TOTAL: 127070.25, OK: 61980.65625, -> 48.7766855341 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 43 TOTAL: 127314.75, OK: 59178.96875, -> 46.4824136637 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 42 TOTAL: 128353.9453125, OK: 58283.4375, -> 45.40837241745 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 41 TOTAL: 127892.984375, OK: 57772.0390625, -> 45.1721721444 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 40 TOTAL: 128986.5390625, OK: 58862.1171875, -> 45.63431007244%
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 39 TOTAL: 129774.09375, OK: 60406.4765625, -> 46.5474077429 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 38 TOTAL: 128198.9765625, OK: 61534.875, -> 47.99950565127 %
+\end_layout
+
+\begin_layout Standard
+
+\size small
+Round 37 TOTAL: 126797.65625, OK: 63074.3828125, -> 49.7441235728 %
+\end_layout
+
+\begin_layout Standard
+And the 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:Different-percentage"
+
+\end_inset
+
+ shows a chart showing the relation between the percentage of the number
+ of 
+\series bold
+\emph on
+Entries
+\series default
+\emph default
+ each 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+ can reach and the total number of successful operations.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename seminar5/chart_slice.png
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Different percentage
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Different-percentage"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \end_deeper
@@ -3448,12 +5957,816 @@ opty
  What is actually copied when a transaction handler is started?
 \end_layout
 
+\begin_layout Standard
+
+\bar under
+Note
+\bar default
+: the source code for this part is on the 
+\emph on
+src/
+\emph default
+ directory that follows this document.
+\end_layout
+
+\begin_layout Standard
+To split the code between multiple machines where the 
+\series bold
+\emph on
+Server
+\series default
+\emph default
+ will run in one machine and multiple instances of 
+\series bold
+\emph on
+Clients
+\series default
+\emph default
+ can run on multiple other machines we just separated the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+startClient()
+\end_layout
+
+\end_inset
+
+ and 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+stopClient()
+\end_layout
+
+\end_inset
+
+ functions to a different module, 
+\emph on
+opty_client.erl
+\emph default
+ and make it send a message 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{clientOpty, self()}
+\end_layout
+
+\end_inset
+
+ to the 
+\emph on
+opty_server.erl
+\emph default
+ module and wait for the number of 
+\series bold
+\emph on
+Entries
+\series default
+\emph default
+, finally this module will enter the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+waitStop()
+\end_layout
+
+\end_inset
+
+ state where it will wait for a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+stop
+\end_layout
+
+\end_inset
+
+ message from the 
+\emph on
+opty_server
+\emph default
+ module to stop all the existing 
+\series bold
+\emph on
+Clients
+\series default
+\emph default
+.
+ The 
+\emph on
+opty_server.erl
+\emph default
+ module after sending the needed information to the 
+\emph on
+opty_client
+\emph default
+ will wait for a timeout to stop the execution of the whole system by stopping
+ the running elements.
+\end_layout
+
+\begin_layout Standard
+The final version of both of these codes is like the following:
+\end_layout
+
+\begin_layout Standard
+
+\size small
+\begin_inset listings
+lstparams "basicstyle={\scriptsize\ttfamily},language=erlang"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+-module(opty_server).
+\end_layout
+
+\begin_layout Plain Layout
+
+-export([start/2]).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+-ifdef(debug_opty).
+\end_layout
+
+\begin_layout Plain Layout
+
+-define(DBG(X,Y,Z),
+\end_layout
+
+\begin_layout Plain Layout
+
+io:format("[OPTY_SERVER_DEBUG] ~w: ~s ~w~n", [X, Y, Z])).
+\end_layout
+
+\begin_layout Plain Layout
+
+-else.
+\end_layout
+
+\begin_layout Plain Layout
+
+-define(DBG(X,Y,Z), true).
+\end_layout
+
+\begin_layout Plain Layout
+
+-endif.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+start(Entries, Time) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    ?DBG(server,"Starting the server",ok),
+\end_layout
+
+\begin_layout Plain Layout
+
+    register(server, self()),
+\end_layout
+
+\begin_layout Plain Layout
+
+    register(s, server:start(Entries)),
+\end_layout
+
+\begin_layout Plain Layout
+
+    ClientsOpty = waitClients(na, Entries, Time),
+\end_layout
+
+\begin_layout Plain Layout
+
+    ?DBG(server,"Content of ClientsOpty",ClientsOpty),
+\end_layout
+
+\begin_layout Plain Layout
+
+    stop(ClientsOpty).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+waitClients(na, Entries, Time) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    ?DBG(server,"Waiting for messages from the client Opty.", waiting),
+\end_layout
+
+\begin_layout Plain Layout
+
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+        {clientOpty, From} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            ?DBG(server,"Got the first client opty message", From),
+\end_layout
+
+\begin_layout Plain Layout
+
+            From ! {entry, Entries},
+\end_layout
+
+\begin_layout Plain Layout
+
+            waitClients(From, Entries, Time);
+\end_layout
+
+\begin_layout Plain Layout
+
+        _ ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            io:format("[WARN] How can I receive anything else now?~n"),
+\end_layout
+
+\begin_layout Plain Layout
+
+            waitClients(na, Entries, Time)
+\end_layout
+
+\begin_layout Plain Layout
+
+    end;
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+waitClients(L, Entries, Time) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+        {clientOpty, From} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            ?DBG(server,"Got another client opty request", From),
+\end_layout
+
+\begin_layout Plain Layout
+
+            From ! {entry, Entries},
+\end_layout
+
+\begin_layout Plain Layout
+
+            waitClients([From|L], Entries, Time);
+\end_layout
+
+\begin_layout Plain Layout
+
+        _ ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            io:format("[WARN] How can I receive anything else now?~n"),
+\end_layout
+
+\begin_layout Plain Layout
+
+            waitClients(L, Entries, Time)
+\end_layout
+
+\begin_layout Plain Layout
+
+    after
+\end_layout
+
+\begin_layout Plain Layout
+
+        (Time*1000) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            ?DBG(server,"Timeout! Time to stop the execution", (Time*1000)),
+\end_layout
+
+\begin_layout Plain Layout
+
+            L
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+stop(L) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    io:format("Stopping...~n"),
+\end_layout
+
+\begin_layout Plain Layout
+
+    stopClients(L),
+\end_layout
+
+\begin_layout Plain Layout
+
+    s ! stop.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+stopClients([]) -> ok;
+\end_layout
+
+\begin_layout Plain Layout
+
+stopClients([Pid|L]) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    Pid ! {stop,server},
+\end_layout
+
+\begin_layout Plain Layout
+
+    stopClients(L);
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+stopClients(L) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    L ! {stop,server},
+\end_layout
+
+\begin_layout Plain Layout
+
+    stopClients([]).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+-module(opty_client).
+\end_layout
+
+\begin_layout Plain Layout
+
+-export([start/4]).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+-ifdef(debug_opty).
+\end_layout
+
+\begin_layout Plain Layout
+
+-define(DBG(X,Y,Z),
+\end_layout
+
+\begin_layout Plain Layout
+
+io:format("[OPTY_CLIENT_DEBUG] ~w: ~s ~w~n", [X, Y, Z])).
+\end_layout
+
+\begin_layout Plain Layout
+
+-else.
+\end_layout
+
+\begin_layout Plain Layout
+
+-define(DBG(X,Y,Z), true).
+\end_layout
+
+\begin_layout Plain Layout
+
+-endif.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+start(Clients, Updates, Server, ServerOpty) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    ?DBG(clients,"Starting the clients", ok),
+\end_layout
+
+\begin_layout Plain Layout
+
+    ServerOpty ! {clientOpty, self()},
+\end_layout
+
+\begin_layout Plain Layout
+
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+        {entry, Entries} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            ?DBG(clients,"Got the entries from the server", Entries),
+\end_layout
+
+\begin_layout Plain Layout
+
+            L = startClients(Clients, [], Entries, Updates, Server),
+\end_layout
+
+\begin_layout Plain Layout
+
+            io:format("Starting: ~w CLIENTS, ~w ENTRIES, " ++
+\end_layout
+
+\begin_layout Plain Layout
+
+                          "~w UPDATES PER TRANSACTION ~n",
+\end_layout
+
+\begin_layout Plain Layout
+
+                      [Clients, Entries, Updates]),
+\end_layout
+
+\begin_layout Plain Layout
+
+            waitStop(L)
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+waitStop(L) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+        {stop, server} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            ?DBG(clients,"Got a stop from the server!", stop),
+\end_layout
+
+\begin_layout Plain Layout
+
+            stopClients(L)
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+startClients(0,L,_,_,_) -> L;
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+startClients(Clients, L, Entries, Updates, Server) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    Pid = client:start(Clients, Entries, Updates, Server),
+\end_layout
+
+\begin_layout Plain Layout
+
+    startClients(Clients-1, [Pid|L], Entries, Updates, Server).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+stopClients([]) -> ok;
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+stopClients([Pid|L]) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    ?DBG(clients,"Stopping client:",Pid),
+\end_layout
+
+\begin_layout Plain Layout
+
+    Pid ! {stop, self()},
+\end_layout
+
+\begin_layout Plain Layout
+
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+        {done, Pid} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            ?DBG(clients,"Received done from",Pid),
+\end_layout
+
+\begin_layout Plain Layout
+
+            ok
+\end_layout
+
+\begin_layout Plain Layout
+
+    end,
+\end_layout
+
+\begin_layout Plain Layout
+
+    stopClients(L).
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:Multiple-instances-running"
+
+\end_inset
+
+ shows this multiple instance running with two sets of clients and one server
+ on a distributed Erlang environment.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename seminar5/opty_multiple.png
+	lyxscale 35
+	scale 20
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Multiple instances running
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Multiple-instances-running"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Since the 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+ code was not changed, the 
+\series bold
+\emph on
+Handler
+\series default
+\emph default
+ will be running on the same Erlang instance as the 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+ that is running a transaction.
+\end_layout
+
+\begin_layout Standard
+When the 
+\series bold
+\emph on
+Handler
+\series default
+\emph default
+ is started the PID of the 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+ is copied, the remote address of the 
+\series bold
+\emph on
+Validator
+\series default
+\emph default
+ is also copied along with the tuple of available 
+\series bold
+\emph on
+Entries
+\series default
+\emph default
+ of the system.
+\end_layout
+
+\begin_layout Standard
+A trace from the 
+\series bold
+\emph on
+Handler
+\series default
+\emph default
+ with the debug flag set returns the following from these values:
+\end_layout
+
+\begin_layout Standard
+
+\size footnotesize
+\begin_inset listings
+lstparams "basicstyle={\scriptsize\ttfamily},language=erlang"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+\size footnotesize
+[HANDLER_DEBUG] Values started {<0.45.0>,<6531.49.0>,{<6531.48.0>,...,<6531.41.0>}}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Which corresponds to the commented values.
+\end_layout
+
 \begin_layout Section
 Conclusions
 \end_layout
 
 \begin_layout Standard
-asd
+With this seminar session we have learned how to implement an optimistic
+ concurrency control allowing us to work on highly distributed systems without
+ a locking architecture.
+ This has shown to be really interesting with all the possible parameters
+ that can influence the system execution and it's performance.
+ 
 \begin_inset CommandInset bibtex
 LatexCommand bibtex
 bibfiles "sodx"

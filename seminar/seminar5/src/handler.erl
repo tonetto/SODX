@@ -8,6 +8,7 @@
 -endif.
 
 start(Client, Validator, Store) ->
+    ?DBG(handler,"Values started",{Client, Validator, Store}),
     spawn_link(fun() -> init(Client, Validator, Store) end).
 
 init(Client, Validator, Store) ->
