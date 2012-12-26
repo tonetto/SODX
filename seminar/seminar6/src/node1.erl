@@ -43,8 +43,8 @@ stabilize(Pred, MyKey, Successor) ->
         {Xkey, Xpid} ->
             case key:between(Xkey, MyKey, Skey) of
                 true ->
-                    Xpid ! {notify, {MyKey, self()}), %% TODO
-                    stabilize(Pred, MyKey, {Xkey, Xpid}); %% TODO
+                    self() ! stabilize, %% TODO
+                    {Xkey, Xpid}; %% TODO
                 false ->
                     Spid ! {notify, {MyKey, self()}), %% TODO
                     Successor
