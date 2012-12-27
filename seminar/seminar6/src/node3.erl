@@ -37,7 +37,8 @@ connect(_, PeerPid) ->
     PeerPid ! {key, Qref, self()},
     receive
         {Qref, Skey} ->
-            {ok, {Skey, PeerPid}} %% TODO
+            Ref = monit(PeerPid),
+            {ok, {Skey, Ref, PeerPid}} %% TODO
     after ?Timeout ->
             io:format("Timeout: no response from ~w~n", [PeerPid])
     end.
@@ -85,6 +86,9 @@ node(MyKey, Predecessor, Successor, Store, Next) ->
         {handover, Elements} ->
             Merged = storage:merge(Store, Elements),
             node(MyKey, Predecessor, Successor, Merged, Next);
+        {'DOWN', Ref, process, _, _} ->
+            {Pred, Succ, Nxt} = down(Ref, Predecessor, Successor, Next),
+            node(MyKey, Pred, Succ, Store, Nxt);
         _ ->
             node(MyKey, Predecessor, Successor, Store, Next)
     end.
@@ -93,7 +97,7 @@ stabilize({_, Spid}) ->
     Spid ! {request, self()}.
 
 stabilize(Pred, MyKey, Successor, Next) ->
-    {Skey, Spid} = Successor,
+    {Skey, Sref, Spid} = Successor,
     case Pred of
         nil ->
             Spid ! {notify, {MyKey, self()}}, %% TODO
@@ -107,7 +111,9 @@ stabilize(Pred, MyKey, Successor, Next) ->
             case key:between(Xkey, MyKey, Skey) of
                 true ->
                     self() ! stabilize, %% TODO
-                    {{Xkey, Xpid}, Successor}; %% TODO
+                    demonit(Sref),      %% TODO
+                    Xref = monit(Xpid), %% TODO
+                    {{Xkey, Xref, Xpid}, Successor};  %% TODO
                 false ->
                     Spid ! {notify, {MyKey, self()}}, %% TODO
                     {Successor, Next}
@@ -118,7 +124,7 @@ request(Peer, Predecessor, Successor) ->
     case Predecessor of
         nil ->
             Peer ! {status, nil, Successor};
-        {Pkey, Ppid} ->
+        {Pkey, _Pref, Ppid} ->
             Peer ! {status, {Pkey, Ppid}, Successor}
     end.
 
@@ -126,14 +132,17 @@ notify({Nkey, Npid}, MyKey, Predecessor, Store) ->
     case Predecessor of
         nil ->
             ?DBG(MyKey,"[Notify] New Predecessor:",Nkey),
+            Nref = monit(Npid),
             Keep = handover(Store, MyKey, Nkey, Npid),
-            {{Nkey, Npid}, Keep}; %% TODO
-        {Pkey, _} ->
+            {{Nkey, Nref, Npid}, Keep}; %% TODO
+        {Pkey, Pref, _} ->
             case key:between(Nkey, Pkey, MyKey) of
                 true ->
                     ?DBG(MyKey,"[Notify] New Predecessor:",Nkey),
+                    demonit(Pref),
+                    Nref = monit(Npid),
                     Keep = handover(Store, MyKey, Nkey, Npid), %% TODO
-                    {{Nkey, Npid}, Keep}; %% TODO
+                    {{Nkey, Nref, Npid}, Keep}; %% TODO
                 false ->
                     ?DBG(MyKey,"[Notify] Kept existing predecessor:",Nkey),
                     {Predecessor, Store}
@@ -176,3 +185,20 @@ handover(Store, MyKey, Nkey, Npid) ->
     {Keep, Leave} = storage:split(MyKey, Nkey, Store),
     Npid ! {handover, Leave},
     Keep.
+
+monit(Pid) ->
+    erlang:monitor(process, Pid).
+
+demonit(nil) ->
+    ok;
+
+demonit(MonitorRef) ->
+    erlang:demonitor(MonitorRef, [flush]).
+
+down(Ref, {_, Ref, _}, Successor, Next) ->
+    {nil, Successor, Next};
+
+down(Ref, Predecessor, {_, Ref, _}, {Nkey, Npid}) ->
+    Nref = monit(Npid), %% TODO
+    self() ! stabilize, %% TODO
+    {Predecessor, {Nkey, Nref, Npid}, nil}.
