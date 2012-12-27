@@ -1,7 +1,7 @@
 -module(node1).
 -export([start/1,start/2]).
 
--ifdef(debug_client).
+-ifdef(debug).
 -define(DBG(X,Y,Z), io:format("[NODE_DEBUG] ~w: ~s ~w~n", [X, Y, Z])).
 -else.
 -define(DBG(X,Y,Z), true).
@@ -21,9 +21,14 @@ start(MyKey, PeerPid) ->
 
 init(MyKey, PeerPid) ->
     Predecessor = nil,
-    {ok, Successor} = connect(MyKey, PeerPid),
-    schedule_stabilize(),
-    node(MyKey, Predecessor, Successor).
+    %% {ok, Successor} = connect(MyKey, PeerPid),
+    case connect(MyKey, PeerPid) of
+        {ok, Successor} ->
+            schedule_stabilize(),
+            node(MyKey, Predecessor, Successor);
+        _ ->
+            ?DBG(MyKey,"Something wrong on the connect function!",init_fail)
+    end.
 
 connect(MyKey, nil) ->
     {ok, {MyKey , self()}}; %% TODO
@@ -64,11 +69,11 @@ node(MyKey, Predecessor, Successor) ->
             create_probe(MyKey, Successor),
             node(MyKey, Predecessor, Successor);
         {probe, MyKey, Nodes, T} ->
-            ?DBG(MyKey,"Got my probe back. Ring should be ok", probe),
+            ?DBG(MyKey,"Got my probe back. Ring should be ok.", probe),
             remove_probe(MyKey, Nodes, T),
             node(MyKey, Predecessor, Successor);
         {probe, RefKey, Nodes, T} ->
-            ?DBG(MyKey,"Got another probe, forwarding",probe),
+            ?DBG(MyKey,"Got another probe, forwarding.",probe),
             forward_probe(RefKey, [MyKey|Nodes], T, Successor),
             node(MyKey, Predecessor, Successor);
         _ ->
@@ -82,12 +87,12 @@ stabilize(Pred, MyKey, Successor) ->
     {Skey, Spid} = Successor,
     case Pred of
         nil ->
-            Spid ! {notify, {MyKey, self()}), %% TODO
+            Spid ! {notify, {MyKey, self()}}, %% TODO
             Successor;
         {MyKey, _} ->
             Successor;
         {Skey, _} ->
-            Spid ! {notify, {MyKey, self()}), %% TODO
+            Spid ! {notify, {MyKey, self()}}, %% TODO
             Successor;
         {Xkey, Xpid} ->
             case key:between(Xkey, MyKey, Skey) of
@@ -95,7 +100,7 @@ stabilize(Pred, MyKey, Successor) ->
                     self() ! stabilize, %% TODO
                     {Xkey, Xpid}; %% TODO
                 false ->
-                    Spid ! {notify, {MyKey, self()}), %% TODO
+                    Spid ! {notify, {MyKey, self()}}, %% TODO
                     Successor
             end
     end.
