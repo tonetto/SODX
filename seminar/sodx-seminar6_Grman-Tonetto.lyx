@@ -4132,12 +4132,17 @@ node(MyKey, Predecessor, Successor, Store, Next, Replica) ->
 
 \begin_layout Plain Layout
 
-            {Pred, NewStore} = notify(New, MyKey, Predecessor, Store, Replica),
+            {Pred, NewStore, NewReplica} = notify(New, MyKey, Predecessor,
 \end_layout
 
 \begin_layout Plain Layout
 
-            node(MyKey, Pred, Successor, NewStore, Next, Replica);
+                                                  Store, Replica),
+\end_layout
+
+\begin_layout Plain Layout
+
+            node(MyKey, Pred, Successor, NewStore, Next, NewReplica);
 \end_layout
 
 \begin_layout Plain Layout
@@ -4246,12 +4251,13 @@ notify({Nkey, Npid}, MyKey, Predecessor, Store, Replica) ->
 
 \begin_layout Plain Layout
 
-            Keep = handover(Store, Replica, MyKey, Nkey, Npid),
+            {KeepStr, KeepRepl} = handover(Store, Replica, MyKey, Nkey,
+ Npid),
 \end_layout
 
 \begin_layout Plain Layout
 
-            {{Nkey, Nref, Npid}, Keep};
+            {{Nkey, Nref, Npid}, KeepStr, KeepRepl};
 \end_layout
 
 \begin_layout Plain Layout
@@ -4286,12 +4292,17 @@ notify({Nkey, Npid}, MyKey, Predecessor, Store, Replica) ->
 
 \begin_layout Plain Layout
 
-                    Keep = handover(Store, Replica, MyKey, Nkey, Npid),
+                    {KeepStr, KeepRepl} = handover(Store, Replica, MyKey,
 \end_layout
 
 \begin_layout Plain Layout
 
-                    {{Nkey, Nref, Npid}, Keep};
+                                                   Nkey, Npid),
+\end_layout
+
+\begin_layout Plain Layout
+
+                    {{Nkey, Nref, Npid}, KeepStr, KeepRepl};
 \end_layout
 
 \begin_layout Plain Layout
@@ -4306,7 +4317,7 @@ notify({Nkey, Npid}, MyKey, Predecessor, Store, Replica) ->
 
 \begin_layout Plain Layout
 
-                    {Predecessor, Store}
+                    {Predecessor, Store, Replica}
 \end_layout
 
 \begin_layout Plain Layout
@@ -5259,7 +5270,107 @@ Predecessor
 \end_layout
 
 \begin_layout Standard
-asd
+To run the first test we register one 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ so the testers are able to reach it.
+ Using the 
+\emph on
+chordy.erl
+\emph default
+ module we connect the tester to the 
+\series bold
+\emph on
+Nodes
+\series default
+\emph default
+ being tested and we use a 9th instance to control how the tests are executed.
+ To launch a test we send a set of 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{test, NumRequests}
+\end_layout
+
+\end_inset
+
+ to all tester at the same time to concurrently perform the tests.
+\end_layout
+
+\begin_layout Standard
+For 1000 entries being sent at once from 4 testers to a single 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ the average time in our test environment was 435.2 ms.
+\end_layout
+
+\begin_layout Standard
+For 1000 entries being sent at once from 4 tester to 4 different 
+\series bold
+\emph on
+Nodes
+\emph default
+ 
+\series default
+that are in the same ring gave us and average time of 371.3 ms.
+\end_layout
+
+\begin_layout Standard
+Clearly the message handling is the limiting factor, once you have a single
+ 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ to handle all the requests it takes longer than to distribute this task
+ between multiple 
+\series bold
+\emph on
+Nodes
+\series default
+\emph default
+.
+\end_layout
+
+\begin_layout Standard
+Adding a new 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ to the ring but not communicating directly to it didn't change the performance
+ of the test giving the same average resulting time.
+ And as just mentioned, if all machines access a single 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+, the message handling will be the bottleneck reducing the throughput of
+ the system.
+\end_layout
+
+\begin_layout Standard
+Certainly with ten thousand elements (
+\series bold
+\emph on
+Nodes
+\series default
+\emph default
+) in the ring and all are accessed the system will certainly scale and be
+ able to handle a huge number of store operations.
 \end_layout
 
 \begin_layout Standard
@@ -5274,7 +5385,23 @@ asd
 \end_layout
 
 \begin_layout Standard
-asd
+If a 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ is falsely detected of being dead it will be ignored by the other 
+\series bold
+\emph on
+Nodes
+\series default
+\emph default
+ but soon it will start a new 
+\emph on
+stabilize
+\emph default
+ that will bring it back to the ring.
 \end_layout
 
 \begin_layout Section
@@ -5282,10 +5409,20 @@ Conclusions
 \end_layout
 
 \begin_layout Standard
+We learned that the Chord distributed hash table algorithm works well and
+ can scale easily.
+ With some fail handling 
+\series bold
+\emph on
+Nodes
+\series default
+\emph default
+ are able to enter and leave the ring and the system can still work flawlessly.
+\end_layout
+
+\begin_layout Standard
 
 \shape italic
-Describe the lessons you have learnt in this seminar, and give your opinion
- about it.
 \begin_inset Newpage pagebreak
 \end_inset
 
