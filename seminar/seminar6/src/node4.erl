@@ -30,7 +30,7 @@ init(MyKey, PeerPid) ->
     end.
 
 connect(MyKey, nil) ->
-    {ok, {MyKey , self()}}; %% TODO
+    {ok, {MyKey , nil, self()}}; %% TODO
 
 connect(_, PeerPid) ->
     Qref = make_ref(),
@@ -52,7 +52,7 @@ node(MyKey, Predecessor, Successor, Store, Next, Replica) ->
             PeerPid ! {Qref, MyKey},
             node(MyKey, Predecessor, Successor, Store, Next, Replica);
         {notify, New} ->
-            {Pred, NewStore} = notify(New, MyKey, Predecessor, Store),
+            {Pred, NewStore} = notify(New, MyKey, Predecessor, Store, Replica),
             node(MyKey, Pred, Successor, NewStore, Next, Replica);
         {request, Peer} ->
             request(Peer, Predecessor, Successor),
@@ -99,7 +99,7 @@ node(MyKey, Predecessor, Successor, Store, Next, Replica) ->
             node(MyKey, Predecessor, Successor, Store, Next, Replica)
     end.
 
-stabilize({_, Spid}) ->
+stabilize({_, _, Spid}) ->
     Spid ! {request, self()}.
 
 stabilize(Pred, MyKey, Successor, Next) ->
@@ -119,27 +119,27 @@ stabilize(Pred, MyKey, Successor, Next) ->
                     self() ! stabilize, %% TODO
                     demonit(Sref),      %% TODO
                     Xref = monit(Xpid), %% TODO
-                    {{Xkey, Xref, Xpid}, Successor};  %% TODO
+                    {{Xkey, Xref, Xpid}, {Skey, Spid}};  %% TODO
                 false ->
                     Spid ! {notify, {MyKey, self()}}, %% TODO
                     {Successor, Next}
             end
     end.
 
-request(Peer, Predecessor, Successor) ->
+request(Peer, Predecessor, {Skey, _, Spid}) ->
     case Predecessor of
         nil ->
-            Peer ! {status, nil, Successor};
+            Peer ! {status, nil, {Skey, Spid}};
         {Pkey, _Pref, Ppid} ->
-            Peer ! {status, {Pkey, Ppid}, Successor}
+            Peer ! {status, {Pkey, Ppid}, {Skey, Spid}}
     end.
 
-notify({Nkey, Npid}, MyKey, Predecessor, Store) ->
+notify({Nkey, Npid}, MyKey, Predecessor, Store, Replica) ->
     case Predecessor of
         nil ->
             ?DBG(MyKey,"[Notify] New Predecessor:",Nkey),
             Nref = monit(Npid),
-            Keep = handover(Store, MyKey, Nkey, Npid),
+            Keep = handover(Store, Replica, MyKey, Nkey, Npid),
             {{Nkey, Nref, Npid}, Keep}; %% TODO
         {Pkey, Pref, _} ->
             case key:between(Nkey, Pkey, MyKey) of
@@ -147,7 +147,7 @@ notify({Nkey, Npid}, MyKey, Predecessor, Store) ->
                     ?DBG(MyKey,"[Notify] New Predecessor:",Nkey),
                     demonit(Pref),
                     Nref = monit(Npid),
-                    Keep = handover(Store, MyKey, Nkey, Npid), %% TODO
+                    Keep = handover(Store, Replica, MyKey, Nkey, Npid), %% TODO
                     {{Nkey, Nref, Npid}, Keep}; %% TODO
                 false ->
                     ?DBG(MyKey,"[Notify] Kept existing predecessor:",Nkey),
@@ -155,7 +155,7 @@ notify({Nkey, Npid}, MyKey, Predecessor, Store) ->
             end
     end.
 
-create_probe(MyKey, {_, Spid}) ->
+create_probe(MyKey, {_, _, Spid}) ->
     Spid ! {probe, MyKey, [MyKey], erlang:now()},
     io:format("Create probe ~w!~n", [MyKey]).
 
@@ -163,11 +163,11 @@ remove_probe(MyKey, Nodes, T) ->
     Time = timer:now_diff(erlang:now(), T),
     io:format("Received probe ~w in ~w ms Ring: ~w~n", [MyKey, Time, Nodes]).
 
-forward_probe(RefKey, Nodes, T, {_, Spid}) ->
+forward_probe(RefKey, Nodes, T, {_, _, Spid}) ->
     Spid ! {probe, RefKey, Nodes, T},
     io:format("Forward probe ~w!~n", [RefKey]).
 
-add(Key, Value, Qref, Client, MyKey, {Pkey, _}, {_, Spid}, Store) ->
+add(Key, Value, Qref, Client, MyKey, {Pkey, _, _}, {_, _, Spid}, Store) ->
     case key:between(Key, Pkey, MyKey) of %% TODO
         true ->
             Added = storage:add(Key, Value, Store), %% TODO
@@ -179,7 +179,7 @@ add(Key, Value, Qref, Client, MyKey, {Pkey, _}, {_, Spid}, Store) ->
             Store
     end.
 
-lookup(Key, Qref, Client, MyKey, {Pkey, _}, {_, Spid}, Store) ->
+lookup(Key, Qref, Client, MyKey, {Pkey, _, _}, {_, _, Spid}, Store) ->
     case key:between(Key, Pkey, MyKey) of %% TODO
         true ->
             Result = storage:lookup(Key, Store), %% TODO

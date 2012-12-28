@@ -21,7 +21,6 @@ start(MyKey, PeerPid) ->
 
 init(MyKey, PeerPid) ->
     Predecessor = nil,
-    %% {ok, Successor} = connect(MyKey, PeerPid),
     case connect(MyKey, PeerPid) of
         {ok, Successor} ->
             schedule_stabilize(),
@@ -122,7 +121,7 @@ notify({Nkey, Npid}, MyKey, Predecessor) ->
             case key:between(Nkey, Pkey, MyKey) of
                 true ->
                     ?DBG(MyKey,"[Notify] New Predecessor:",Nkey),
-                    {Nkey, Npid}; %% TODO: ADD SOME CODE
+                    {Nkey, Npid}; %% TODO
                 false ->
                     ?DBG(MyKey,"[Notify] Kept existing predecessor:",Nkey),
                     Predecessor

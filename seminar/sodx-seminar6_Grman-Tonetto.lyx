@@ -1,0 +1,5071 @@
+#LyX 2.0 created this file. For more info see http://www.lyx.org/
+\lyxformat 413
+\begin_document
+\begin_header
+\textclass article
+\begin_preamble
+% Very simple template for SODX lab reports. Most common packages are already included.
+
+% Change according your file encoding
+\usepackage{url}
+
+%opening
+\title{Seminar Report: Chordy}
+\author{Peter Grman, Leonardo Tonetto}
+\date{\today{}}
+\end_preamble
+\use_default_options false
+\maintain_unincluded_children false
+\language english
+\language_package none
+\inputencoding utf8
+\fontencoding default
+\font_roman default
+\font_sans default
+\font_typewriter default
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\float_placement H
+\paperfontsize 11
+\spacing single
+\use_hyperref false
+\papersize a4paper
+\use_geometry false
+\use_amsmath 1
+\use_esint 1
+\use_mhchem 0
+\use_mathdots 0
+\cite_engine basic
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\use_refstyle 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Standard
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+
+\backslash
+maketitle
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Introduction
+\end_layout
+
+\begin_layout Standard
+In this last seminar session we implemented a distributed hash table following
+ the Chord scheme 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "stoica2003chord"
+
+\end_inset
+
+.
+ This protocol supports just one operation: given a key, it maps the key
+ onto a node.
+ Depending on the application using Chord, that node might be responsible
+ for storing a value associated with the key.
+ Chord uses consistent hashing to assign keys to Chord nodes.
+ It tends to balance load, since each node receives roughly the same number
+ of keys, and requires relatively little movement of keys when nodes join
+ and leave the system.
+\end_layout
+
+\begin_layout Standard
+A Chord node requires information about 
+\begin_inset Formula $O(\log N)$
+\end_inset
+
+ other nodes for efficient routing, but performance degrades gracefully
+ when that information is out of date.
+ This is important in practice because nodes will join and leave arbitrarily,
+ and consistency of even 
+\begin_inset Formula $O(\log N)$
+\end_inset
+
+ state may be hard to maintain.
+ Only one piece of information per node need be correct in order for Chord
+ to guarantee correct (though possibly slow) routing of queries.
+\end_layout
+
+\begin_layout Standard
+In this we implemented progressively four versions of the code, starting
+ at a simple one where the most basic functionalities of the system were
+ implemented, later adding the possibility for a local storage for each
+ node to start actually keeping pairs of keys and values, a third incremental
+ implementation handling failures and finally a 4th one with replication
+ to make the storage system even more reliable.
+\end_layout
+
+\begin_layout Standard
+All the basic source code used in this seminar was based on the guide provided
+ in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "emdc_sodx6"
+
+\end_inset
+
+.
+ The final versions of these codes are provided along with this document
+ in the 
+\emph on
+src/
+\emph default
+ directory.
+\end_layout
+
+\begin_layout Section
+System overview
+\end_layout
+
+\begin_layout Standard
+The description of the system will be done into four parts, each one describing
+ the overview of the progressive evolution of this code.
+\end_layout
+
+\begin_layout Subsection
+Simple ring - node1.erl
+\end_layout
+
+\begin_layout Standard
+This is the first implementation of a node that will be the building blocks
+ of a Chord ring.
+ Each node that's in the system will now only keep track of who is its 
+\series bold
+\emph on
+Successor
+\series default
+\emph default
+ and its 
+\series bold
+\emph on
+Predecessor
+\series default
+\emph default
+.
+ So two versions of a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+start()
+\end_layout
+
+\end_inset
+
+ function are exported: one that should be used for the first node to enter
+ the system that takes only only argument (the key that represents that
+ 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+); and another version that takes not only the key of the 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ but also the 
+\emph on
+PID
+\emph default
+ of any existing node of the ring this new element wants to join.
+\end_layout
+
+\begin_layout Standard
+Once spawned, a new 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ will call the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+init()
+\end_layout
+
+\end_inset
+
+ procedure that will initialize the two important variables for this implementat
+ion: 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Predecessor
+\end_layout
+
+\end_inset
+
+, this time set to 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+nil
+\end_layout
+
+\end_inset
+
+ and 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Successor
+\end_layout
+
+\end_inset
+
+ that at this first moment will be set to 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+self()
+\end_layout
+
+\end_inset
+
+ in case this is the first 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ to join the system or tentatively will be set to the 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ which the 
+\emph on
+PID
+\emph default
+ was given when it started.
+ This second action is done with a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{key, Qref, self()}
+\end_layout
+
+\end_inset
+
+ message being sent to this other 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ that will simply respond back with a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{Qref, Mykey}
+\end_layout
+
+\end_inset
+
+ message, where 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+MyKey
+\end_layout
+
+\end_inset
+
+ is the key of the potential 
+\series bold
+\emph on
+Successor
+\series default
+\emph default
+.
+ This message exchange may timeout due to long network latency or simply
+ because the other node we are trying to contact is not reachable, in this
+ case an error message is printed and this 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ exits.
+ The following code snippet shows this part of the execution just described.
+\end_layout
+
+\begin_layout Standard
+\align center
+
+\size small
+\begin_inset listings
+lstparams "basicstyle={\scriptsize\ttfamily},language=erlang"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+\size small
+-module(node1).
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-export([start/1,start/2]).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-ifdef(debug).
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-define(DBG(X,Y,Z), io:format("[NODE_DEBUG] ~w: ~s ~w~n", [X, Y, Z])).
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-else.
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-define(DBG(X,Y,Z), true).
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-endif.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-define(Stabilize, 1000).
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+-define(Timeout, 5000).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+start(MyKey) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    ?DBG(MyKey,"Starting as the first in the ring",start),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    start(MyKey, nil).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+start(MyKey, PeerPid) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    ?DBG(MyKey,"Starting with an existing node:",PeerPid),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    timer:start(),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    spawn(fun() -> init(MyKey, PeerPid) end).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+init(MyKey, PeerPid) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Predecessor = nil,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    %% {ok, Successor} = connect(MyKey, PeerPid),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    case connect(MyKey, PeerPid) of
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {ok, Successor} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            schedule_stabilize(),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            node(MyKey, Predecessor, Successor);
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        _ ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            ?DBG(MyKey,"Something wrong on the connect function!",init_fail)
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+connect(MyKey, nil) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    {ok, {MyKey , self()}};
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+connect(_, PeerPid) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Qref = make_ref(),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    PeerPid ! {key, Qref, self()},
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {Qref, Skey} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            {ok, {Skey, PeerPid}}
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    after ?Timeout ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            io:format("Timeout: no response from ~w~n", [PeerPid])
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    end.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+After the described steps, the 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ enters the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+node()
+\end_layout
+
+\end_inset
+
+ state which is the main one where all the actions are triggered.
+ To do it, it's going to wait for a couple of messages described next:
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{key, Qref, PeerPid}
+\end_layout
+
+\end_inset
+
+ message that as described before can be sent from any other 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ of the system that wants to know the corresponding key of another 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+, this last one will simply answer back with 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{Qref, MyKey}
+\end_layout
+
+\end_inset
+
+ containing the desired key.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{notify, New}
+\end_layout
+
+\end_inset
+
+ message from another 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ trying to become its new 
+\series bold
+\emph on
+Predecessor
+\series default
+\emph default
+.
+ This will trigger the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+notify()
+\end_layout
+
+\end_inset
+
+ function that will test if this requester can become the 
+\series bold
+\emph on
+Predecessor
+\series default
+\emph default
+ or not.
+ To do it, the inquired 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ will check if that value is currently set to 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+nil
+\end_layout
+
+\end_inset
+
+, in this case it's simply assigned as the 
+\series bold
+\emph on
+Predecessor
+\series default
+\emph default
+, otherwise it will check if the key of the requester has a value that is
+ between its own key and the key of the current 
+\series bold
+\emph on
+Predecessor
+\series default
+\emph default
+, this is done using the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+key:between()
+\end_layout
+
+\end_inset
+
+ function, in case it is between them, this new requesting 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ will become its new 
+\series bold
+\emph on
+Predecessor
+\series default
+\emph default
+, in case it's not the values are kept the same.
+ The pair 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{Key, Pid}
+\end_layout
+
+\end_inset
+
+ of the actual 
+\series bold
+\emph on
+Predecessor
+\series default
+\emph default
+ is returned in any case.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{request, Peer}
+\end_layout
+
+\end_inset
+
+ message that is sent by another 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ that wants to know who's the current 
+\series bold
+\emph on
+Predecessor
+\series default
+\emph default
+ of the inquired 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+.
+ It will trigger the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+request()
+\end_layout
+
+\end_inset
+
+ function that will simply respond back with a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{status, {Key, Pid}}
+\end_layout
+
+\end_inset
+
+ where 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{Key, Pid}
+\end_layout
+
+\end_inset
+
+ correspond to the 
+\series bold
+\emph on
+Predecessor
+\series default
+\emph default
+, and of course, this whole tuple can be 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+nil
+\end_layout
+
+\end_inset
+
+ in case there is no such member set yet.
+ This message is sent during the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+stabilize()
+\end_layout
+
+\end_inset
+
+ function that will be described next.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{status, Pred}
+\end_layout
+
+\end_inset
+
+ message that as described above contains the 
+\series bold
+\emph on
+Predecessor
+\series default
+\emph default
+ of the 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+'s current 
+\series bold
+\emph on
+Successor
+\series default
+\emph default
+.
+ It will then trigger the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+stabilize()
+\end_layout
+
+\end_inset
+
+ function that has two versions:
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+stabilize/1
+\end_layout
+
+\end_inset
+
+ that is triggered with the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+stabilize
+\end_layout
+
+\end_inset
+
+ message (described next) that will simply send a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{request, self()}
+\end_layout
+
+\end_inset
+
+ message to the 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+'s current 
+\series bold
+\emph on
+Successor
+\series default
+\emph default
+.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+stabilize/3
+\end_layout
+
+\end_inset
+
+ that will basically check if the current 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ selected as the 
+\series bold
+\emph on
+Successor
+\series default
+\emph default
+ can actually be it based on the value of 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Pred
+\end_layout
+
+\end_inset
+
+ received with the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+status
+\end_layout
+
+\end_inset
+
+ message.
+ Whenever it finds the 
+\series bold
+\emph on
+Successor
+\series default
+\emph default
+ that suits the requirements it's going to send a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{notify, {MyKey, self()}}
+\end_layout
+
+\end_inset
+
+ message to that 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+.
+ As mentioned, based on the value of 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Pred
+\end_layout
+
+\end_inset
+
+ that can be:
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+nil
+\end_layout
+
+\end_inset
+
+ it simply assume it as the 
+\series bold
+\emph on
+Successor
+\series default
+\emph default
+ and the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+notify
+\end_layout
+
+\end_inset
+
+ message is sent.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{MyKey, _}
+\end_layout
+
+\end_inset
+
+ that means it's already the 
+\series bold
+\emph on
+Successor
+\series default
+\emph default
+ and has the analyzed 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ as the current 
+\series bold
+\emph on
+Predecessor
+\series default
+\emph default
+, nothing is done.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{Skey, _}
+\end_layout
+
+\end_inset
+
+ that means the 
+\series bold
+\emph on
+Successor
+\series default
+\emph default
+ has itself set as its current 
+\series bold
+\emph on
+Predecessor
+\series default
+\emph default
+, so it performs the same as for the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+nil
+\end_layout
+
+\end_inset
+
+ case.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{Xkey, Xpid}
+\end_layout
+
+\end_inset
+
+ from any third 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+, in this case as done on the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+notify()
+\end_layout
+
+\end_inset
+
+ function, using the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+key:between()
+\end_layout
+
+\end_inset
+
+ function it's going to check based on the keys of these three 
+\series bold
+\emph on
+Nodes
+\series default
+\emph default
+ if it can place itself between them, in this case a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+notify
+\end_layout
+
+\end_inset
+
+ message is sent and it's assumed as the current 
+\series bold
+\emph on
+Successor
+\series default
+\emph default
+, otherwise it send itself a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+stabilize
+\end_layout
+
+\end_inset
+
+ message and assume the 
+\series bold
+\emph on
+Predecessor
+\series default
+\emph default
+ of the potential 
+\series bold
+\emph on
+Successor
+\series default
+\emph default
+ as the current 
+\series bold
+\emph on
+Successor
+\series default
+\emph default
+.
+\end_layout
+
+\end_deeper
+\end_deeper
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+stabilize
+\end_layout
+
+\end_inset
+
+ message that can be sent by the 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ to itself (as already described) and also periodically by a timer set with
+ the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+schedule_stabilize()
+\end_layout
+
+\end_inset
+
+ function (called during the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+init()
+\end_layout
+
+\end_inset
+
+ execution).
+ It will trigger the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+stabilize/1
+\end_layout
+
+\end_inset
+
+ function that will start the stabilization process once again.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+probe
+\end_layout
+
+\end_inset
+
+ message that can be sent by an external 
+\series bold
+\emph on
+Client
+\series default
+\emph default
+ that will trigger in the requested 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ the start of a probing procedure by calling the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+create_probe()
+\end_layout
+
+\end_inset
+
+ function.
+ It will send a token with the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{probe, MyKey, [MyKey], erlang:now()}
+\end_layout
+
+\end_inset
+
+ message that will attempt to traverse the whole ring, if this token is
+ received back the ring should be complete and the token is remove with
+ the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+remove_probe()
+\end_layout
+
+\end_inset
+
+ function.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{probe, MyKey, Nodes, T}
+\end_layout
+
+\end_inset
+
+ message that is the previously created token that returned back confirming
+ that the ring is complete.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{probe, RefKey, Nodes, T}
+\end_layout
+
+\end_inset
+
+ message that is a probe token created by another 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ that should be simply forwarded to its 
+\series bold
+\emph on
+Successor
+\series default
+\emph default
+.
+ This is done via the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+forward_probe()
+\end_layout
+
+\end_inset
+
+ function.
+\end_layout
+
+\begin_layout Standard
+The code that perform these actions is presented in the following snippet.
+\end_layout
+
+\begin_layout Standard
+\align center
+
+\size small
+\begin_inset listings
+lstparams "basicstyle={\scriptsize\ttfamily},language=erlang"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+\size small
+schedule_stabilize() ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    timer:send_interval(?Stabilize, self(), stabilize).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+node(MyKey, Predecessor, Successor) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {key, Qref, PeerPid} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            PeerPid ! {Qref, MyKey},
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            node(MyKey, Predecessor, Successor);
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {notify, New} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            Pred = notify(New, MyKey, Predecessor),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            node(MyKey, Pred, Successor);
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {request, Peer} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            request(Peer, Predecessor),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            node(MyKey, Predecessor, Successor);
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {status, Pred} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            Succ = stabilize(Pred, MyKey, Successor),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            node(MyKey, Predecessor, Succ);
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        stabilize ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            ?DBG(MyKey,"Starting a new Stabilize",stabilize),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            stabilize(Successor),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            node(MyKey, Predecessor, Successor);
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        probe ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            ?DBG(MyKey,"Starting a probe.",probe),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            create_probe(MyKey, Successor),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            node(MyKey, Predecessor, Successor);
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {probe, MyKey, Nodes, T} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            ?DBG(MyKey,"Got my probe back.
+ Ring should be ok.", probe),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            remove_probe(MyKey, Nodes, T),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            node(MyKey, Predecessor, Successor);
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {probe, RefKey, Nodes, T} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            ?DBG(MyKey,"Got another probe, forwarding.",probe),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            forward_probe(RefKey, [MyKey|Nodes], T, Successor),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            node(MyKey, Predecessor, Successor);
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        _ ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            node(MyKey, Predecessor, Successor)
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+stabilize({_, Spid}) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Spid ! {request, self()}.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+stabilize(Pred, MyKey, Successor) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    {Skey, Spid} = Successor,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    case Pred of
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        nil ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            Spid ! {notify, {MyKey, self()}},
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            Successor;
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {MyKey, _} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            Successor;
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {Skey, _} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            Spid ! {notify, {MyKey, self()}},
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            Successor;
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {Xkey, Xpid} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            case key:between(Xkey, MyKey, Skey) of
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                true ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                    self() ! stabilize,
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                    {Xkey, Xpid};
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                false ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                    Spid ! {notify, {MyKey, self()}},
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                    Successor
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            end
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+request(Peer, Predecessor) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    case Predecessor of
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        nil ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            Peer ! {status, nil};
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {Pkey, Ppid} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            Peer ! {status, {Pkey, Ppid}}
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+notify({Nkey, Npid}, MyKey, Predecessor) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    case Predecessor of
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        nil ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            ?DBG(MyKey,"[Notify] New Predecessor:",Nkey),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            {Nkey, Npid};
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+        {Pkey, _} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            case key:between(Nkey, Pkey, MyKey) of
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                true ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                    ?DBG(MyKey,"[Notify] New Predecessor:",Nkey),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                    {Nkey, Npid};
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                false ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                    ?DBG(MyKey,"[Notify] Kept existing predecessor:",Nkey),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+                    Predecessor
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+            end
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+create_probe(MyKey, {_, Spid}) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Spid ! {probe, MyKey, [MyKey], erlang:now()},
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    io:format("Create probe ~w!~n", [MyKey]).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+remove_probe(MyKey, Nodes, T) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Time = timer:now_diff(erlang:now(), T),
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    io:format("Received probe ~w in ~w ms Ring: ~w~n", [MyKey, Time, Nodes]).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+forward_probe(RefKey, Nodes, T, {_, Spid}) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    Spid ! {probe, RefKey, Nodes, T},
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+    io:format("Forward probe ~w!~n", [RefKey]).
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+To help it all another simple module was implemented, the 
+\emph on
+key.erl
+\emph default
+.
+ It implements two functions:
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+generate/0
+\end_layout
+
+\end_inset
+
+ that generates a random number that can be used as the key number of any
+ 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ or stored value.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+between/3
+\end_layout
+
+\end_inset
+
+ that will check if a given key has a value that is between other two given
+ keys.
+\end_layout
+
+\begin_layout Standard
+Please refer to the source code for the details of this implementation.
+\end_layout
+
+\begin_layout Subsection
+Adding a storage - node2.erl
+\end_layout
+
+\begin_layout Standard
+For this implementation we started with the 
+\emph on
+storage.erl
+\emph default
+ module that manages 
+a 
+\lang english
+
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Store
+\end_layout
+
+\end_inset
+
+ variable that will contain all the values we want this system to keep.
+ It exports 5 functions:
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+create/0
+\end_layout
+
+\end_inset
+
+ that returns an empty list to be used as a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Store
+\end_layout
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+add/3
+\end_layout
+
+\end_inset
+
+ that adds a pair key-value to the given 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Store
+\end_layout
+
+\end_inset
+
+, but first it will check if the that is being used already exists, in this
+ case the pair is not added, otherwise it will simply append the pair to
+ the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Store
+\end_layout
+
+\end_inset
+
+ list.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lookup/2
+\end_layout
+
+\end_inset
+
+ to lookup for a Key in its local storage.
+ The Value is returned if the given Key is found, otherwise 
+\emph on
+-1
+\emph default
+ is returned.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+merge/2
+\end_layout
+
+\end_inset
+
+ to merge two lists, is simply a wrapper to the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lists:keymerge()
+\end_layout
+
+\end_inset
+
+ function.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+split/3
+\end_layout
+
+\end_inset
+
+ to split a list into two parts.
+ The details of this function will be described later when talking about
+ the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+handover/4
+\end_layout
+
+\end_inset
+
+ function.
+\end_layout
+
+\begin_layout Standard
+Please, refer to the source code for details of implementation.
+\end_layout
+
+\begin_layout Standard
+Now the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+node()
+\end_layout
+
+\end_inset
+
+ function was modified to receive 4 parameters, including now a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Store
+\end_layout
+
+\end_inset
+
+ to keep the desired key-value pairs.
+ To handle the storage three new messages were added:
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{add, Key, Value, Qref, Client}
+\end_layout
+
+\end_inset
+
+ message that will trigger the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+add()
+\end_layout
+
+\end_inset
+
+ function to add a new value to the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Store
+\end_layout
+
+\end_inset
+
+ list.
+ This function will verify if the 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ is the one that should take care of the key.
+ A 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ will take care of all keys from (but no including) the identifier of its
+ 
+\series bold
+\emph on
+Predecessor
+\series default
+\emph default
+ to (and including) the identifier of itself.
+ If so, it will add the key-value pair in the local store and acknowledge
+ the client requester with an 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{Qref, ok}
+\end_layout
+
+\end_inset
+
+ message, otherwise it will simply forward it to its 
+\series bold
+\emph on
+Successor
+\series default
+\emph default
+ with a new 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+add
+\end_layout
+
+\end_inset
+
+ message.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{lookup, Key, Qref, Client}
+\end_layout
+
+\end_inset
+
+ message that will trigger the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+lookup()
+\end_layout
+
+\end_inset
+
+ function.
+ As in the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+add
+\end_layout
+
+\end_inset
+
+ message, if the requested Key is in the range of Keys the requested 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ is responsible, it will try to lookup for the corresponding value, otherwise
+ the lookup request will be forwarded to its 
+\series bold
+\emph on
+Successor
+\series default
+\emph default
+.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{handover, Element}
+\end_layout
+
+\end_inset
+
+ message that will be used to delegate new responsibilities to 
+\series bold
+\emph on
+Nodes
+\series default
+\emph default
+ that join the ring, which means divide the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Store
+\end_layout
+
+\end_inset
+
+ list with the new 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ based on the description give on the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+add
+\end_layout
+
+\end_inset
+
+ message.
+ Since the management of new 
+\series bold
+\emph on
+Predecessors
+\series default
+\emph default
+ is done on the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+notify()
+\end_layout
+
+\end_inset
+
+ function it was also modified to receive 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Store
+\end_layout
+
+\end_inset
+
+ as a parameter.
+ Always that a new 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ is set as the 
+\series bold
+\emph on
+Predecessor
+\series default
+\emph default
+ the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+handover()
+\end_layout
+
+\end_inset
+
+ function is called.
+ This function will split the storage into two parts, the one the current
+ 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ will keep and another that will be sent in the format of this 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{handover, Leave}
+\end_layout
+
+\end_inset
+
+ message.
+ The new 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ will finally merge the 
+received 
+\lang english
+
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Elements
+\end_layout
+
+\end_inset
+
+ list with its 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Store
+\end_layout
+
+\end_inset
+
+ list.
+ The merge and the split tasks are done using the corresponding functions
+ exported from the 
+\emph on
+storage.erl
+\emph default
+ module.
+\end_layout
+
+\begin_layout Standard
+The following snippet shows the parts added to this module.
+\end_layout
+
+\begin_layout Standard
+\align center
+
+\size small
+\begin_inset listings
+lstparams "basicstyle={\scriptsize\ttfamily},language=erlang"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+-module(node2).
+\end_layout
+
+\begin_layout Plain Layout
+
+(...)
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+node(MyKey, Predecessor, Successor, Store) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+(...)
+\end_layout
+
+\begin_layout Plain Layout
+
+        {add, Key, Value, Qref, Client} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            Added = add(Key, Value, Qref, Client,
+\end_layout
+
+\begin_layout Plain Layout
+
+                        MyKey, Predecessor, Successor, Store),
+\end_layout
+
+\begin_layout Plain Layout
+
+            node(MyKey, Predecessor, Successor, Added);
+\end_layout
+
+\begin_layout Plain Layout
+
+        {lookup, Key, Qref, Client} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            lookup(Key, Qref, Client, MyKey, Predecessor, Successor, Store),
+\end_layout
+
+\begin_layout Plain Layout
+
+            node(MyKey, Predecessor, Successor, Store);
+\end_layout
+
+\begin_layout Plain Layout
+
+        {handover, Elements} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            Merged = storage:merge(Store, Elements),
+\end_layout
+
+\begin_layout Plain Layout
+
+            node(MyKey, Predecessor, Successor, Merged);
+\end_layout
+
+\begin_layout Plain Layout
+
+        (...)
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+(...)
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+notify({Nkey, Npid}, MyKey, Predecessor, Store) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    case Predecessor of
+\end_layout
+
+\begin_layout Plain Layout
+
+        nil ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            ?DBG(MyKey,"[Notify] New Predecessor:",Nkey),
+\end_layout
+
+\begin_layout Plain Layout
+
+            Keep = handover(Store, MyKey, Nkey, Npid),
+\end_layout
+
+\begin_layout Plain Layout
+
+            {{Nkey, Npid}, Keep};
+\end_layout
+
+\begin_layout Plain Layout
+
+        {Pkey, _} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            case key:between(Nkey, Pkey, MyKey) of
+\end_layout
+
+\begin_layout Plain Layout
+
+                true ->
+\end_layout
+
+\begin_layout Plain Layout
+
+                    ?DBG(MyKey,"[Notify] New Predecessor:",Nkey),
+\end_layout
+
+\begin_layout Plain Layout
+
+                    Keep = handover(Store, MyKey, Nkey, Npid),
+\end_layout
+
+\begin_layout Plain Layout
+
+                    {{Nkey, Npid}, Keep};
+\end_layout
+
+\begin_layout Plain Layout
+
+                false ->
+\end_layout
+
+\begin_layout Plain Layout
+
+                    ?DBG(MyKey,"[Notify] Kept existing predecessor:",Nkey),
+\end_layout
+
+\begin_layout Plain Layout
+
+                    {Predecessor, Store}
+\end_layout
+
+\begin_layout Plain Layout
+
+            end
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+(...)
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+add(Key, Value, Qref, Client, MyKey, {Pkey, _}, {_, Spid}, Store) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    case key:between(Key, Pkey, MyKey) of
+\end_layout
+
+\begin_layout Plain Layout
+
+        true ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            Added = storage:add(Key, Value, Store),
+\end_layout
+
+\begin_layout Plain Layout
+
+            Client ! {Qref, ok},
+\end_layout
+
+\begin_layout Plain Layout
+
+            Added;
+\end_layout
+
+\begin_layout Plain Layout
+
+        false ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            Spid! {add, Key, Value, Qref, Client},
+\end_layout
+
+\begin_layout Plain Layout
+
+            Store
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+lookup(Key, Qref, Client, MyKey, {Pkey, _}, {_, Spid}, Store) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    case key:between(Key, Pkey, MyKey) of
+\end_layout
+
+\begin_layout Plain Layout
+
+        true ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            Result = storage:lookup(Key, Store),
+\end_layout
+
+\begin_layout Plain Layout
+
+            Client ! {Qref, Result};
+\end_layout
+
+\begin_layout Plain Layout
+
+        false ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            Spid ! {lookup, Key, Qref, Client}
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+handover(Store, MyKey, Nkey, Npid) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    {Keep, Leave} = storage:split(MyKey, Nkey, Store),
+\end_layout
+
+\begin_layout Plain Layout
+
+    Npid ! {handover, Leave},
+\end_layout
+
+\begin_layout Plain Layout
+
+    Keep.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Failsafe - node3.erl
+\end_layout
+
+\begin_layout Standard
+Now we wanted to handle the failure of 
+\series bold
+\emph on
+Nodes
+\series default
+\emph default
+ so actions could be taken in order to maintain the ring working.
+ For that, both the 
+\series bold
+\emph on
+Successor
+\series default
+\emph default
+ and the 
+\series bold
+\emph on
+Predecessor
+\series default
+\emph default
+ need to detect this, we used an Erlang built-in procedures to monitor the
+ health of a node.
+\end_layout
+
+\begin_layout Standard
+If the 
+\series bold
+\emph on
+Predecessor
+\series default
+\emph default
+ dies there's nothing much to be done expect set it to 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+nil
+\end_layout
+
+\end_inset
+
+ and wait for the others to ask it to be 
+\series bold
+\emph on
+Successor
+\series default
+\emph default
+.
+\end_layout
+
+\begin_layout Standard
+But when a 
+\series bold
+\emph on
+Successor
+\series default
+\emph default
+ is the one that dies the 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ needs to quickly find a new one.
+ For that we keep track of the 
+\series bold
+\emph on
+Successor
+\series default
+\emph default
+ of the current 
+\series bold
+\emph on
+Successor
+\series default
+\emph default
+ in the variable 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Next
+\end_layout
+
+\end_inset
+
+ to be handled in the main 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+node()
+\end_layout
+
+\end_inset
+
+ state.
+ It will not change unless the current 
+\series bold
+\emph on
+Successor
+\series default
+\emph default
+ inform it to do so with a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{status, Pred, Nx}
+\end_layout
+
+\end_inset
+
+ message, triggered by a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+request
+\end_layout
+
+\end_inset
+
+ message, therefore these functions were modified along with the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+stabilize()
+\end_layout
+
+\end_inset
+
+ function that will actually update the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Next
+\end_layout
+
+\end_inset
+
+ value when needed.
+\end_layout
+
+\begin_layout Standard
+The actual failure detection is done using the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+erlang:monitor/2
+\end_layout
+
+\end_inset
+
+ function that once a process dies a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+'DOWN'
+\end_layout
+
+\end_inset
+
+ message is sent to the process that is monitoring it.
+ For that the tuple to represent a 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ was changed to include a reference number returned by the afore mentioned
+ function so later once it dies the tracker can figure out which of its
+ neighbors left.
+\end_layout
+
+\begin_layout Standard
+Whenever a 
+\series bold
+\emph on
+Successor
+\series default
+\emph default
+ or 
+\series bold
+\emph on
+Predecessor
+\series default
+\emph default
+ changes the 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ will de-monitor the old and start monitoring the new one.
+ For these 
+\emph on
+monitoring
+\emph default
+ and 
+\emph on
+demonitoring
+\emph default
+ actions two wrapper functions were coded: 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+monit/1
+\end_layout
+
+\end_inset
+
+ and 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+demonit/1
+\end_layout
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+When a 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ crashes the monitor will receive the mentioned 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{'DOWN', ...}
+\end_layout
+
+\end_inset
+
+ message that will trigger the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+down/4
+\end_layout
+
+\end_inset
+
+ function.
+ It will simply verify which 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ died, if it's the 
+\series bold
+\emph on
+Predecessor
+\series default
+\emph default
+, this value will be set to 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+nil
+\end_layout
+
+\end_inset
+
+, and if it's the 
+\series bold
+\emph on
+Successor
+\series default
+\emph default
+ the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Next
+\end_layout
+
+\end_inset
+
+ will be set as the new one and a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+stabilize
+\end_layout
+
+\end_inset
+
+ message will be sent to the 
+\series bold
+\emph on
+Node 
+\series default
+\emph default
+itself, finally these new values are returned so that they can be reset
+ as needed.
+\end_layout
+
+\begin_layout Standard
+The following snippet shows the modified parts of this code.
+\end_layout
+
+\begin_layout Standard
+\align center
+
+\size small
+\begin_inset listings
+lstparams "basicstyle={\scriptsize\ttfamily},language=erlang"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+-module(node3).
+\end_layout
+
+\begin_layout Plain Layout
+
+(...)
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+connect(MyKey, nil) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    {ok, {MyKey , nil, self()}};
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+connect(_, PeerPid) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    Qref = make_ref(),
+\end_layout
+
+\begin_layout Plain Layout
+
+    PeerPid ! {key, Qref, self()},
+\end_layout
+
+\begin_layout Plain Layout
+
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+        {Qref, Skey} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            Ref = monit(PeerPid),
+\end_layout
+
+\begin_layout Plain Layout
+
+            {ok, {Skey, Ref, PeerPid}}
+\end_layout
+
+\begin_layout Plain Layout
+
+    after ?Timeout ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            io:format("Timeout: no response from ~w~n", [PeerPid])
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+node(MyKey, Predecessor, Successor, Store, Next) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+        (...)
+\end_layout
+
+\begin_layout Plain Layout
+
+        {request, Peer} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            request(Peer, Predecessor, Successor),
+\end_layout
+
+\begin_layout Plain Layout
+
+            node(MyKey, Predecessor, Successor, Store, Next);
+\end_layout
+
+\begin_layout Plain Layout
+
+        {status, Pred, Nx} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            {Succ, Nxt} = stabilize(Pred, MyKey, Successor, Nx),
+\end_layout
+
+\begin_layout Plain Layout
+
+            node(MyKey, Predecessor, Succ, Store, Nxt);
+\end_layout
+
+\begin_layout Plain Layout
+
+        (...)
+\end_layout
+
+\begin_layout Plain Layout
+
+        {'DOWN', Ref, process, _, _} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            {Pred, Succ, Nxt} = down(Ref, Predecessor, Successor, Next),
+\end_layout
+
+\begin_layout Plain Layout
+
+            node(MyKey, Pred, Succ, Store, Nxt);
+\end_layout
+
+\begin_layout Plain Layout
+
+        (...)
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+(...)
+\end_layout
+
+\begin_layout Plain Layout
+
+stabilize({_, _, Spid}) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    Spid ! {request, self()}.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+stabilize(Pred, MyKey, Successor, Next) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    {Skey, Sref, Spid} = Successor,
+\end_layout
+
+\begin_layout Plain Layout
+
+    case Pred of
+\end_layout
+
+\begin_layout Plain Layout
+
+        nil ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            Spid ! {notify, {MyKey, self()}},
+\end_layout
+
+\begin_layout Plain Layout
+
+            {Successor, Next};
+\end_layout
+
+\begin_layout Plain Layout
+
+        {MyKey, _} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            {Successor, Next};
+\end_layout
+
+\begin_layout Plain Layout
+
+        {Skey, _} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            Spid ! {notify, {MyKey, self()}},
+\end_layout
+
+\begin_layout Plain Layout
+
+            {Successor, Next};
+\end_layout
+
+\begin_layout Plain Layout
+
+        {Xkey, Xpid} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            case key:between(Xkey, MyKey, Skey) of
+\end_layout
+
+\begin_layout Plain Layout
+
+                true ->
+\end_layout
+
+\begin_layout Plain Layout
+
+                    self() ! stabilize,
+\end_layout
+
+\begin_layout Plain Layout
+
+                    demonit(Sref),
+\end_layout
+
+\begin_layout Plain Layout
+
+                    Xref = monit(Xpid),
+\end_layout
+
+\begin_layout Plain Layout
+
+                    {{Xkey, Xref, Xpid}, Successor};
+\end_layout
+
+\begin_layout Plain Layout
+
+                false ->
+\end_layout
+
+\begin_layout Plain Layout
+
+                    Spid ! {notify, {MyKey, self()}},
+\end_layout
+
+\begin_layout Plain Layout
+
+                    {Successor, Next}
+\end_layout
+
+\begin_layout Plain Layout
+
+            end
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+request(Peer, Predecessor, {Skey, _, Spid}) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    case Predecessor of
+\end_layout
+
+\begin_layout Plain Layout
+
+        nil ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            Peer ! {status, nil, {Skey, Spid}};
+\end_layout
+
+\begin_layout Plain Layout
+
+        {Pkey, _Pref, Ppid} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            Peer ! {status, {Pkey, Ppid}, {Skey, Spid}}
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+notify({Nkey, Npid}, MyKey, Predecessor, Store) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    case Predecessor of
+\end_layout
+
+\begin_layout Plain Layout
+
+        nil ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            ?DBG(MyKey,"[Notify] New Predecessor:",Nkey),
+\end_layout
+
+\begin_layout Plain Layout
+
+            Nref = monit(Npid),
+\end_layout
+
+\begin_layout Plain Layout
+
+            Keep = handover(Store, MyKey, Nkey, Npid),
+\end_layout
+
+\begin_layout Plain Layout
+
+            {{Nkey, Nref, Npid}, Keep};
+\end_layout
+
+\begin_layout Plain Layout
+
+        {Pkey, Pref, _} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            case key:between(Nkey, Pkey, MyKey) of
+\end_layout
+
+\begin_layout Plain Layout
+
+                true ->
+\end_layout
+
+\begin_layout Plain Layout
+
+                    ?DBG(MyKey,"[Notify] New Predecessor:",Nkey),
+\end_layout
+
+\begin_layout Plain Layout
+
+                    demonit(Pref),
+\end_layout
+
+\begin_layout Plain Layout
+
+                    Nref = monit(Npid),
+\end_layout
+
+\begin_layout Plain Layout
+
+                    Keep = handover(Store, MyKey, Nkey, Npid),
+\end_layout
+
+\begin_layout Plain Layout
+
+                    {{Nkey, Nref, Npid}, Keep};
+\end_layout
+
+\begin_layout Plain Layout
+
+                false ->
+\end_layout
+
+\begin_layout Plain Layout
+
+                    ?DBG(MyKey,"[Notify] Kept existing predecessor:",Nkey),
+\end_layout
+
+\begin_layout Plain Layout
+
+                    {Predecessor, Store}
+\end_layout
+
+\begin_layout Plain Layout
+
+            end
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+(...)
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+monit(Pid) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    erlang:monitor(process, Pid).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+demonit(nil) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    ok;
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+demonit(MonitorRef) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    erlang:demonitor(MonitorRef, [flush]).
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+down(Ref, {_, Ref, _}, Successor, Next) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    {nil, Successor, Next};
+\end_layout
+
+\begin_layout Plain Layout
+
+down(Ref, Predecessor, {_, Ref, _}, {Nkey, Npid}) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    Nref = monit(Npid),
+\end_layout
+
+\begin_layout Plain Layout
+
+    self() ! stabilize,
+\end_layout
+
+\begin_layout Plain Layout
+
+    {Predecessor, {Nkey, Nref, Npid}, nil}.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Replication - node4.erl
+\end_layout
+
+\begin_layout Standard
+Up to this point, if a node dies it would bring with it a part of the storage,
+ so the storage should be somehow replicated throughout the other nodes
+ of the ring.
+ To do so, the implementation selected will for each new key-value pair
+ received send those to its 
+\series bold
+\emph on
+Successor
+\series default
+\emph default
+ in the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{replicate, Key, Value}
+\end_layout
+
+\end_inset
+
+ message format.
+ This other 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ will therefore keep a new storage named 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Replica
+\end_layout
+
+\end_inset
+
+.
+ Whenever a 
+\series bold
+\emph on
+Predecessor
+\series default
+\emph default
+ crashes this 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Replica
+\end_layout
+
+\end_inset
+
+ will also be shared via the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+handover
+\end_layout
+
+\end_inset
+
+ method and message, and once a 
+\series bold
+\emph on
+Successor
+\series default
+\emph default
+ crashes the current 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Store
+\end_layout
+
+\end_inset
+
+ will be sent to the new one (set by 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+Next
+\end_layout
+
+\end_inset
+
+).
+\end_layout
+
+\begin_layout Standard
+The following snippet shows the modifications made for this final version
+ of the code.
+\end_layout
+
+\begin_layout Standard
+\align center
+
+\size small
+\begin_inset listings
+lstparams "basicstyle={\scriptsize\ttfamily},language=erlang"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+-module(node4).
+\end_layout
+
+\begin_layout Plain Layout
+
+(...)
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+node(MyKey, Predecessor, Successor, Store, Next, Replica) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    receive
+\end_layout
+
+\begin_layout Plain Layout
+
+         {notify, New} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            {Pred, NewStore} = notify(New, MyKey, Predecessor, Store, Replica),
+\end_layout
+
+\begin_layout Plain Layout
+
+            node(MyKey, Pred, Successor, NewStore, Next, Replica);
+\end_layout
+
+\begin_layout Plain Layout
+
+         {handover, ElementsStore, ElementsReplica} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            MergedStore = storage:merge(Store, ElementsStore),
+\end_layout
+
+\begin_layout Plain Layout
+
+            MergedRepl = storage:merge(Replica, ElementsReplica),
+\end_layout
+
+\begin_layout Plain Layout
+
+            node(MyKey, Predecessor, Successor, MergedStore, Next, MergedRepl);
+\end_layout
+
+\begin_layout Plain Layout
+
+        {replicate, Key, Value} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            NewReplica = storage:add(Key, Value, Replica),
+\end_layout
+
+\begin_layout Plain Layout
+
+            node(MyKey, Predecessor, Successor, Store, Next, NewReplica);
+         {'DOWN', Ref, process, _, _} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            {Pred, Succ, Nxt, NewStore, NewReplica} = down(Ref, Predecessor,
+\end_layout
+
+\begin_layout Plain Layout
+
+                                                           Successor, Next,
+\end_layout
+
+\begin_layout Plain Layout
+
+                                                           Store, Replica),
+\end_layout
+
+\begin_layout Plain Layout
+
+            node(MyKey, Pred, Succ, NewStore, Nxt, NewReplica);
+\end_layout
+
+\begin_layout Plain Layout
+
+        (...)
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+(...)
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+notify({Nkey, Npid}, MyKey, Predecessor, Store, Replica) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    case Predecessor of
+\end_layout
+
+\begin_layout Plain Layout
+
+        nil ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            ?DBG(MyKey,"[Notify] New Predecessor:",Nkey),
+\end_layout
+
+\begin_layout Plain Layout
+
+            Nref = monit(Npid),
+\end_layout
+
+\begin_layout Plain Layout
+
+            Keep = handover(Store, Replica, MyKey, Nkey, Npid),
+\end_layout
+
+\begin_layout Plain Layout
+
+            {{Nkey, Nref, Npid}, Keep};
+\end_layout
+
+\begin_layout Plain Layout
+
+        {Pkey, Pref, _} ->
+\end_layout
+
+\begin_layout Plain Layout
+
+            case key:between(Nkey, Pkey, MyKey) of
+\end_layout
+
+\begin_layout Plain Layout
+
+                true ->
+\end_layout
+
+\begin_layout Plain Layout
+
+                    ?DBG(MyKey,"[Notify] New Predecessor:",Nkey),
+\end_layout
+
+\begin_layout Plain Layout
+
+                    demonit(Pref),
+\end_layout
+
+\begin_layout Plain Layout
+
+                    Nref = monit(Npid),
+\end_layout
+
+\begin_layout Plain Layout
+
+                    Keep = handover(Store, Replica, MyKey, Nkey, Npid),
+\end_layout
+
+\begin_layout Plain Layout
+
+                    {{Nkey, Nref, Npid}, Keep};
+\end_layout
+
+\begin_layout Plain Layout
+
+                false ->
+\end_layout
+
+\begin_layout Plain Layout
+
+                    ?DBG(MyKey,"[Notify] Kept existing predecessor:",Nkey),
+\end_layout
+
+\begin_layout Plain Layout
+
+                    {Predecessor, Store}
+\end_layout
+
+\begin_layout Plain Layout
+
+            end
+\end_layout
+
+\begin_layout Plain Layout
+
+    end.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+(...)
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+handover(Store, Replica, MyKey, Nkey, Npid) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    {KeepStore, LeaveStore} = storage:split(MyKey, Nkey, Store),
+\end_layout
+
+\begin_layout Plain Layout
+
+    {KeepRepl, LeaveRepl} = storage:split(MyKey, Nkey, Replica),
+\end_layout
+
+\begin_layout Plain Layout
+
+    Npid ! {handover, LeaveStore, LeaveRepl},
+\end_layout
+
+\begin_layout Plain Layout
+
+    {KeepStore, KeepRepl}.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+(...)
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+down(Ref, {_, Ref, _}, Successor, Next, Store, Replica) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    NewStore = storage:merge(Store, Replica),
+\end_layout
+
+\begin_layout Plain Layout
+
+    {nil, Successor, Next, NewStore, []};
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+down(Ref, Predecessor, {_, Ref, _}, {Nkey, Npid}, Store, Replica) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+    Nref = monit(Npid),
+\end_layout
+
+\begin_layout Plain Layout
+
+    self() ! stabilize,
+\end_layout
+
+\begin_layout Plain Layout
+
+    lists:map(
+\end_layout
+
+\begin_layout Plain Layout
+
+      fun({Key,Value}) ->
+\end_layout
+
+\begin_layout Plain Layout
+
+              Npid ! {replicate, Key, Value}
+\end_layout
+
+\begin_layout Plain Layout
+
+      end,
+\end_layout
+
+\begin_layout Plain Layout
+
+      Store),
+\end_layout
+
+\begin_layout Plain Layout
+
+    {Predecessor, {Nkey, Nref, Npid}, nil, Store, Replica}.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Evaluation
+\end_layout
+
+\begin_layout Standard
+Here are some simple evaluations of the system running each version of the
+ code.
+ Further analysis will also be made on the Open Questions session of this
+ document.
+\end_layout
+
+\begin_layout Subsection
+node1.erl
+\end_layout
+
+\begin_layout Standard
+First by simply running the code in a local and single Erlang instance shows
+ to work properly as expected.
+ The 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:Simple-single-Erlang"
+
+\end_inset
+
+ shows the system running with 8 
+\series bold
+\emph on
+Nodes
+\series default
+\emph default
+ and manually issuing a 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+probe
+\end_layout
+
+\end_inset
+
+ message returns that the ring is complete and stable.
+ The 
+\series bold
+\emph on
+Nodes
+\series default
+\emph default
+ were added in a random order as shown by the output and using a similar
+ command as the following:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+H = node1:start(8, A).
+\end_layout
+
+\end_inset
+
+ where 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+H
+\end_layout
+
+\end_inset
+
+ is the pid of the new 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ and 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+A
+\end_layout
+
+\end_inset
+
+ a previously created 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename seminar6/simple_local.png
+	lyxscale 50
+	scale 45
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Simple single Erlang instance
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Simple-single-Erlang"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+To test it in a distributed environment we created 8 instances of Erlang
+ in a single machine using the following command to start the instance:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+erl -name nodeH@127.0.0.1 -setcookie secret
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+And later the following command to run each 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+register(nodeA, node1:start(1)).
+\end_layout
+
+\end_inset
+
+ for the first node and
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+register(nodeB, node1:start(2, {nodeA, 'nodeA@127.0.0.1'})).
+\end_layout
+
+\end_inset
+
+ for the following ones.
+\end_layout
+
+\begin_layout Standard
+The 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:Distributed-node1.erl"
+
+\end_inset
+
+ shows an execution on a distributed environment and the successful execution
+ of the probing.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename seminar6/distributed_node1.png
+	lyxscale 25
+	scale 23
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Distributed node1.erl
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Distributed-node1.erl"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+node2.erl
+\end_layout
+
+\begin_layout Standard
+To run a test on this version of the code we used a proposed 
+\emph on
+chordy.erl
+\emph default
+ module 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "emdc_sodx6"
+
+\end_inset
+
+.
+ A simple execution using the same 8 
+\series bold
+\emph on
+Nodes
+\series default
+\emph default
+ in the ring and using a 9th instance to run the tests inserting and testing
+ 10000 entrances shows that it works as expected.
+\end_layout
+
+\begin_layout Standard
+The 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:chordy.erl-against-node2.erl"
+
+\end_inset
+
+ shows a screen-shot of this execution.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename seminar6/distributed_node2.png
+	lyxscale 30
+	scale 23
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+
+\emph on
+chordy.erl
+\emph default
+ against node2.erl
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:chordy.erl-against-node2.erl"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Further tests will be performed on the Open Questions session of this document.
+\end_layout
+
+\begin_layout Subsection
+node3.erl
+\end_layout
+
+\begin_layout Standard
+asd
+\end_layout
+
+\begin_layout Subsection
+node4.erl
+\end_layout
+
+\begin_layout Standard
+asd
+\end_layout
+
+\begin_layout Section
+Open Questions
+\end_layout
+
+\begin_layout Standard
+These are the open questions that were asked throughout the seminar guide
+ 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "emdc_sodx6"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+\emph on
+1.4 - What are the pros and cons of a more frequent stabilizing procedure?
+\end_layout
+
+\begin_layout Standard
+Pros: As soon as new 
+\series bold
+\emph on
+Nodes
+\series default
+\emph default
+ arrive to the system they'll be quickly placed between the correct nodes
+ and it's going to be less likely that a inconsistent ring will appear.
+\end_layout
+
+\begin_layout Standard
+Cons: Obviously the biggest drawback is the message and computational overhead
+ added by this procedure, specially if the ring grows to a huge number of
+ 
+\series bold
+\emph on
+Nodes
+\series default
+\emph default
+, stressing the resources just to stabilize the ring.
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+\emph on
+1.5 - Do we need a special case to detect that we're pointing to ourselves?
+ Do we have to inform the new node about our decision? How will it know
+ we have discarded its friendly proposal?
+\end_layout
+
+\begin_layout Standard
+We don't need a special case to detect that we're pointing to ourselves
+ because the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+key:between()
+\end_layout
+
+\end_inset
+
+ will always return 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+true
+\end_layout
+
+\end_inset
+
+ for the case where both 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+From
+\end_layout
+
+\end_inset
+
+ and 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+To
+\end_layout
+
+\end_inset
+
+ are the same.
+ And we don't need to inform immediately the new 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ about our decision because it will get this information on the next time
+ it executes a stabilize function.
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+\emph on
+1.6 - What would happen if we didn't schedule the stabilize procedure? Would
+ things still work?
+\end_layout
+
+\begin_layout Standard
+Since the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+stabilize()
+\end_layout
+
+\end_inset
+
+ function is triggered only when the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+stabilize
+\end_layout
+
+\end_inset
+
+ message is received a new 
+\series bold
+\emph on
+Node
+\series default
+\emph default
+ would never know if its potential 
+\series bold
+\emph on
+Successor
+\series default
+\emph default
+ accepted it as the 
+\series bold
+\emph on
+Predecessor
+\series default
+\emph default
+, as mentioned on the answer to question 
+\emph on
+1.5
+\emph default
+, so the ring will never be completed without it.
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+\emph on
+2.6 - If we now have a distributed store that can handle new nodes that are
+ added to the ring we might try some performance testing.
+ You need several machines to do this.
+ Assume that we have eight machines and that we will use four in building
+ the ring and four in testing the performance.
+ As a first test we can have one node only in the ring and let the four
+ test machines add a number (e.g., 1000) of random elements (key-value pairs)
+ to the ring and then do a lookup of the elements, measuring the time it
+ takes.
+ You can use the test procedure given in ’Appendix A’, which should be given
+ with the name of the node to contact.
+ Does it take longer for one machine to handle 4000 elements rather than
+ four machines that do 1000 elements each? What is the limiting factor?
+ Now what happens if we add another node to the ring, how does the performance
+ change? Does it matter if all test machines access the same node? Add two
+ more nodes to the ring, any changes? How will things change if we have
+ a ten thousand elements?
+\end_layout
+
+\begin_layout Standard
+asd
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+\emph on
+3.3 - Another thing to ponder is what will happen if a node is falsely detected
+ of being dead? What will happen if a node has only been temporally unavailable
+ (and in the worst case, it might think that the rest of the network is
+ gone).
+ How much would you gamble in trusting the 'DOWN' message? 
+\end_layout
+
+\begin_layout Standard
+asd
+\end_layout
+
+\begin_layout Section
+Conclusions
+\end_layout
+
+\begin_layout Standard
+
+\shape italic
+Describe the lessons you have learnt in this seminar, and give your opinion
+ about it.
+\begin_inset Newpage pagebreak
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset bibtex
+LatexCommand bibtex
+bibfiles "sodx"
+options "plain"
+
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document
