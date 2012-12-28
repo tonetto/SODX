@@ -1,37 +1,43 @@
 -module(gui).
--export([start/1, init/1]).
-
+-export([start/2]).
+-define(width, 200).
+-define(height, 200).
 -include_lib("wx/include/wx.hrl").
 
-start(Name) ->
-    spawn(gui, init, [Name]).
+start(Id, Master) ->
+    spawn_link(fun() -> init(Id, Master) end).
 
-init(Name) ->
-    Width = 200,
-    Height = 200,
+init(Id, Master) ->
+    Frame = make_frame(Id),
+    loop(Frame, Master).
+
+make_frame(Id) ->
+                                                %Id is the window title
     Server = wx:new(), %Server will be the parent for the Frame
-    Frame = wxFrame:new(Server, -1, Name, [{size,{Width, Height}}]),
+    Frame = wxFrame:new(Server, -1, Id, [{size,{?width, ?height}}]),
+    wxFrame:setBackgroundColour(Frame, ?wxBLACK),
     wxFrame:show(Frame),
-    loop(Frame).
+                                                %monitor closing window event
+    wxFrame:connect(Frame, close_window),
+    Frame.
 
-loop(Frame)->
+loop(Frame, Master)->
     receive
-	waiting ->
-	    %wxYELLOW doesn’t exist in "wx/include/wx.hrl"
-	    wxFrame:setBackgroundColour(Frame, {255, 255, 0}),
-	    wxFrame:refresh(Frame),
-	    loop(Frame);
-	taken ->
-	    wxFrame:setBackgroundColour(Frame, ?wxRED),
-	    wxFrame:refresh(Frame),
-	    loop(Frame);
-	leave ->
-	    wxFrame:setBackgroundColour(Frame, ?wxBLUE),
-	    wxFrame:refresh(Frame),
-	    loop(Frame);
-	stop ->
-	    ok;
-	Error ->
-	    io:format("gui: strange message ~w ~n", [Error]),
-	    loop(Frame)
+                                                %check if the window was closed by the user
+        #wx{event=#wxClose{}} ->
+            wxWindow:destroy(Frame),
+            Master ! stop,
+            ok;
+        {color, Color} ->
+            color(Frame, Color),
+            loop(Frame, Master);
+        stop ->
+            ok;
+        Error ->
+            io:format("gui: strange message ~w ~n", [Error]),
+            loop(Frame, Master)
     end.
+
+color(Frame, Color) ->
+    wxFrame:setBackgroundColour(Frame, Color),
+    wxFrame:refresh(Frame).

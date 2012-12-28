@@ -1,68 +1,58 @@
 -module(worker).
--export([init/5]).
+-export([start/4, start/5]).
+-define(change, 20).
+-define(color, {0,0,0}).
 
--define(deadlock, 5000).
+start(Id, Module, Rnd, Sleep) ->
+    spawn(fun() -> init(Id, Module, Rnd, Sleep) end).
 
-init(Name, Lock, Seed, Sleep, Work) ->
-    Gui = spawn(gui, init, [Name]),
-    random:seed(Seed, Seed, Seed),
-    Taken = worker(Name, Lock, [], Sleep, Work, Gui),
-    Gui ! stop,
-    terminate(Name, Taken).
+init(Id, Module, Rnd, Sleep) ->
+    Cast = apply(Module, start, [Id]),
+    Color = ?color,
+    init_cont(Id, Rnd, Cast, Color, Sleep).
 
-worker(Name, Lock, Taken, Sleep, Work, Gui) ->
-    Wait = random:uniform(Sleep),
+start(Id, Module, Rnd, Peer, Sleep) ->
+    spawn(fun() -> init(Id, Module, Rnd, Peer, Sleep) end).
+
+init(Id, Module, Rnd, Peer, Sleep) ->
+    Cast = apply(Module, start, [Id, Peer]),
     receive
-	stop ->
-	    Taken
+        {ok, Color} ->
+            init_cont(Id, Rnd, Cast, Color, Sleep);
+        {error, Error} ->
+            io:format("error: ~s~n", [Error])
+    end.
+
+init_cont(Id, Rnd, Cast, Color, Sleep) ->
+    random:seed(Rnd, Rnd, Rnd),
+    Gui = gui:start(Id, self()),
+    Gui ! {color, Color},
+    worker(Id, Cast, Color, Gui, Sleep),
+    Cast ! stop,
+    Gui ! stop.
+
+worker(Id, Cast, Color, Gui, Sleep) ->
+    Wait = if Sleep == 0 -> 0; true -> random:uniform(Sleep) end,
+    receive
+        {deliver, {_From, N}} ->
+            Color2 = change_color(N, Color),
+            Gui ! {color, Color2},
+            worker(Id, Cast, Color2, Gui, Sleep);
+        {join, Peer} ->
+            Cast ! {join, Peer},
+            worker(Id, Cast, Color, Gui, Sleep);
+        request ->
+            Cast ! {ok, Color},
+            worker(Id, Cast, Color, Gui, Sleep);
+        stop ->
+            ok;
+        Error ->
+            io:format("strange message: ~w~n", [Error]),
+            worker(Id, Cast, Color, Gui, Sleep)
     after Wait ->
-	    T = critical(Name, Lock, Work, Gui),
-	    worker(Name, Lock, [T|Taken], Sleep, Work, Gui)
+            Cast ! {mcast, {Id, random:uniform(?change)}},
+            worker(Id, Cast, Color, Gui, Sleep)
     end.
 
-critical(Name, Lock, Work, Gui) ->
-    T1 = now(),
-    Gui ! waiting,
-    Lock ! {take, self()},
-    receive
-	taken ->
-	    T = elapsed(T1),
-	    io:format("~s: lock taken in ~w ms~n",[Name, T]),
-	    Gui ! taken,
-	    timer:sleep(random:uniform(Work)),
-	    io:format("~s: lock released~n",[Name]),
-	    Gui ! leave,
-	    Lock ! release,
-	    {taken, T}
-    after ?deadlock ->
-	    io:format("~s: giving up~n",[Name]),
-	    Lock ! release,
-	    Gui ! leave,
-	    no
-    end.
-
-elapsed({_,S1,M1}) ->
-    {_,S2,M2} = now(),
-    (S2 - S1)*1000 + ((M2 - M1) div 1000).
-
-terminate(Name, Taken) ->
-    {Locks, Time, Dead} =
-	lists:foldl(
-	  fun(Entry,{L,T,D}) ->
-		  case Entry of
-		      {taken,I} ->
-			  {L+1,T+I,D};
-		      _ ->
-			  {L,T,D+1}
-		  end
-	  end,
-	  {0,0,0}, Taken),
-    if
-	Locks > 0 ->
-	    Average = Time / Locks;
-	true ->
-	    Average = 0
-    end,
-    io:format("~s: ~w locks taken, average of ~w ms, ~w withdrawal situations~n",
-	      [Name, Locks, Average, Dead]).
-
+change_color(N, {R,G,B}) ->
+    {G, B, ((R+N) rem 256)}.
