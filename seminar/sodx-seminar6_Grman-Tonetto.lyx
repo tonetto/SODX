@@ -4680,7 +4680,7 @@ status open
 \begin_inset Graphics
 	filename seminar6/distributed_node1.png
 	lyxscale 25
-	scale 23
+	scale 22
 
 \end_inset
 
@@ -4760,7 +4760,7 @@ status open
 \begin_inset Graphics
 	filename seminar6/distributed_node2.png
 	lyxscale 30
-	scale 23
+	scale 22
 
 \end_inset
 
@@ -4808,7 +4808,59 @@ node3.erl
 \end_layout
 
 \begin_layout Standard
-asd
+To test this module we executed four distributed Erlang instances, checked
+ the consistency of the ring sending a probe message to nodeD, killed the
+ first node and checked with another probe that it is still consistent.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename seminar6/distributed_node3.png
+	lyxscale 35
+	scale 27
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+node3.erl failure handling
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:node3.erl-failure-handling"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Other analysis will be done on the Open Question section of this document.
 \end_layout
 
 \begin_layout Subsection
@@ -4816,7 +4868,191 @@ node4.erl
 \end_layout
 
 \begin_layout Standard
-asd
+Finally to test this last part we executed in a distributed Erlang environment
+ three 
+\series bold
+\emph on
+Nodes
+\series default
+\emph default
+, another instance running the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+connect/1
+\end_layout
+
+\end_inset
+
+ function of the 
+\emph on
+chordy.erl
+\emph default
+ module connected to all three 
+\series bold
+\emph on
+Nodes
+\series default
+\emph default
+.
+ First we send a message to add a key-value pair from a fifth instance that
+ will work as a test client.
+ From the tester instance we register three 
+\emph on
+chordy:connect()
+\emph default
+, like the following:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+register(tester, chordy:connect({nodeA, 'nodeA@127.0.0.1'})).
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+From the test client instance we add values to 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+nodeA
+\end_layout
+
+\end_inset
+
+:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{tester, 'tester@127.0.0.1'} ! {add, 25, 25}.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+We can test sending a lookup message and finally kill 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+nodeA
+\end_layout
+
+\end_inset
+
+ and try to lookup for that key we just added:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+lstparams "basicstyle={\ttfamily},language=erlang"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+{tester2, 'tester@127.0.0.1'} ! {lookup, 25}.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+In the actual test we also run a probe to show that the current state of
+ the ring is consistent with the remaining 
+\series bold
+\emph on
+Nodes
+\series default
+\emph default
+.
+ The 
+\begin_inset CommandInset ref
+LatexCommand formatted
+reference "fig:node4.erl-testing-failover"
+
+\end_inset
+
+ shows a screen-shot of this test and it works as expected.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename seminar6/distributed_node4.png
+	lyxscale 25
+	scale 25
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+node4.erl testing failover
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:node4.erl-testing-failover"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Section

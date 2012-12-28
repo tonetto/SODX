@@ -52,8 +52,9 @@ node(MyKey, Predecessor, Successor, Store, Next, Replica) ->
             PeerPid ! {Qref, MyKey},
             node(MyKey, Predecessor, Successor, Store, Next, Replica);
         {notify, New} ->
-            {Pred, NewStore} = notify(New, MyKey, Predecessor, Store, Replica),
-            node(MyKey, Pred, Successor, NewStore, Next, Replica);
+            {Pred, NewStore, NewReplica} = notify(New, MyKey, Predecessor,
+                                                  Store, Replica),
+            node(MyKey, Pred, Successor, NewStore, Next, NewReplica);
         {request, Peer} ->
             request(Peer, Predecessor, Successor),
             node(MyKey, Predecessor, Successor, Store, Next, Replica);
@@ -139,19 +140,20 @@ notify({Nkey, Npid}, MyKey, Predecessor, Store, Replica) ->
         nil ->
             ?DBG(MyKey,"[Notify] New Predecessor:",Nkey),
             Nref = monit(Npid),
-            Keep = handover(Store, Replica, MyKey, Nkey, Npid),
-            {{Nkey, Nref, Npid}, Keep}; %% TODO
+            {KeepStr, KeepRepl} = handover(Store, Replica, MyKey, Nkey, Npid),
+            {{Nkey, Nref, Npid}, KeepStr, KeepRepl}; %% TODO
         {Pkey, Pref, _} ->
             case key:between(Nkey, Pkey, MyKey) of
                 true ->
                     ?DBG(MyKey,"[Notify] New Predecessor:",Nkey),
                     demonit(Pref),
                     Nref = monit(Npid),
-                    Keep = handover(Store, Replica, MyKey, Nkey, Npid), %% TODO
-                    {{Nkey, Nref, Npid}, Keep}; %% TODO
+                    {KeepStr, KeepRepl} = handover(Store, Replica, MyKey,
+                                                   Nkey, Npid),
+                    {{Nkey, Nref, Npid}, KeepStr, KeepRepl};
                 false ->
                     ?DBG(MyKey,"[Notify] Kept existing predecessor:",Nkey),
-                    {Predecessor, Store}
+                    {Predecessor, Store, Replica}
             end
     end.
 

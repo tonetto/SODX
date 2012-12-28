@@ -87,10 +87,7 @@ node(MyKey, Predecessor, Successor, Store, Next) ->
             Merged = storage:merge(Store, Elements),
             node(MyKey, Predecessor, Successor, Merged, Next);
         {'DOWN', Ref, process, _, _} ->
-            ?DBG(MyKey,"HERE!<<-----------",down),
-            ?DBG(MyKey,"Pred:",Predecessor),
-            ?DBG(MyKey,"Succ:",Successor),
-            ?DBG(MyKey,"Next:",Next),
+            ?DBG(MyKey,"Node crashed: ",Ref),
             {Pred, Succ, Nxt} = down(Ref, Predecessor, Successor, Next),
             node(MyKey, Pred, Succ, Store, Nxt);
         _ ->
