@@ -1,0 +1,99 @@
+FONSECA, ALEXANDRE JORGE
+VU, ANH THU
+
+* Add also code snippets when describing lock1
+* In lock3, you don't need to send an additional request when (FromTimestamp < ReqTimestamp)
+
+MARRÓN VIDA, DIEGO 
+MELACHRINOS, PETROS
+
+* Some values of Sleep and Work used in the experiments are perhaps too big, given that the deadlock constant is 5000
+* In the last question, note that is not the same having the Lamport clocks in the Workers than in the Lock instances
+
+CHACON, ALESSANDRO ENRIQUE
+LEVEL RUIZ, ERNESTO ALFONSO
+
+* Add also code snippets when describing lock1
+* In lock2, two processes can be in the critical section at the same time
+* In lock3:
+ - You must update the local clock just after receiving the message (before using it)
+ - You must update the local clock also when receiving ok messages
+ - You need two variables in the Wait function: one to store the process local clock and another to store the logical time of the request
+
+BORDALLO ESTOR, RUBEN
+MORON DURAN, FRANCISCO DAVID
+
+* Please, submit only one version of the assignment
+* Add also code snippets when describing lock1
+* In lock3:
+ - You must update the local clock just after receiving the message (before using it)
+ - You don't need to send an additional request when (TSr < RTS)
+* Deadlocks are not possible in lock3 (withdrawal != deadlock)
+* In the last question, note that is not the same having the Lamport clocks in the Workers than in the Lock instances
+
+FORERO SANCHEZ, PEDRO
+CALDERON, GIANCARLO
+
+* Deadlocks are not possible in lock2, even if the additional request message is not sent
+* In lock3:
+ - You must update the local clock just after receiving the request message (before using it)
+ - You don't need to send an additional request when (Timestamp2 < Timestamp)
+ - You must update local clock when request message is received in held function
+* How experiments are presented should be improved
+
+ZOGER, JIMMY
+SEDAR, MOHOTTIGE ROSHAN
+
+* Show in the experiments the effect of different Work and Sleep parameters on the lock behavior
+
+DJAKOU DJATCHA, CHRISTIAN
+SUBIRATS CASTELL, JOSEP
+
+* Add also code snippets when describing lock1
+* Caption of Fig 12 should refer to lock2. There is also a broken ref to Fig 10
+
+FAROKHMANESH, FARNOOSH
+CUBERO LUQUE, LORENZO JESUS
+
+* In lock2, you must generate a new Ref for the additional request message
+* In lock3
+ - You don't need to send an additional request when (ForeignClock<LocalClock)
+ - You need two variables in the Wait function: one to store the process local clock and another to store the logical time of the request
+ - Not clear why you need the updateWait message
+* Some values of Sleep and Work used in the experiments are perhaps too big, given that the deadlock constant is 5000
+* Your answer about how you guarantee that only one process is in the critical section at
+any time is not clear
+* In the last question, note that the Lamport clocks are not in the Workers but in the Lock instances
+
+DEMETRIOU, CHARIS
+DEMETRIOU, NICOS
+
+* Add also code snippets when describing lock1
+* In lock3, two processes can be in the critical section at the same time when Lamport clocks are equal
+* Some values of Sleep and Work used in the experiments are perhaps too big, given that the deadlock constant is 5000
+
+GANDUXE PREGONA, ORIOL
+PARRAMÓN TUBELLA, ROGER
+
+* Describe also how lock1 works, including code snippets
+* In lock3:
+ - Two processes can be in the critical section at the same time when Lamport clocks are equal
+ - Missing parameters in request message in held function
+ - You must update local clock when request message is received in held function
+* Show in the experiments the effect of different Work and Sleep parameters on the lock behavior
+* In the last question, note that the Lamport clocks are not in the Workers but in the Lock instances
+
+GRMAN, PETER
+TONETTO, LEONARDO
+
+* In lock3 you don't need to send an additional request when (TakeTime > ExtClock)
+* Some values of Sleep and Work used in the experiments are perhaps too big, given that the deadlock constant is 5000
+* Code is suspiciously similar to the Nuhic's one (next time I will consider this in your mark)
+
+NUHIC, ISAK
+
+* Add also code snippets when describing lock1
+* In lock3 you don't need to send an additional request when (TakeTime > ExtClock)
+* lock1 is deadlock-prone, but you say in your answer it is not
+* Code is suspiciously similar to the Grman & Tonetto's one (next time I will consider this in your mark)
+* You must provide also your .ERL files

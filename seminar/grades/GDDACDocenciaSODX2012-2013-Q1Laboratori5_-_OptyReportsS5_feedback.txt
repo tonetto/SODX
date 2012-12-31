@@ -1,0 +1,82 @@
+MARRÓN VIDA, DIEGO 
+MELACHRINOS, PETROS
+
+* In section 3.4, it could be more appropriate to do several read and/or write operations per transaction instead of playing with the probability
+* In section 3.5, it seems that your experiment is not evaluating the impact of different percentage of modified entries with respect to the total number of entries
+
+CHACON, ALESSANDRO ENRIQUE
+LEVEL RUIZ, ERNESTO ALFONSO
+
+* Describe changes you did to execute server and clients in different machines
+* Describe changes you did in the client to answer the open questions (when applicable) and
+the default value of the parameters (the ones you are not evaluating) in each experiment
+
+BORDALLO ESTOR, RUBEN
+MORON DURAN, FRANCISCO DAVID
+
+* Show the impact of different ratio of read and write operations per transaction
+* Show the impact of different percentage of modified entries for transaction
+* Discuss the changes to execute server and clients in different nodes
+* To show the impact of the different parameters in the success rate you should do more exhaustive tests (test more values)
+* The impact of the different parameters in the success rate can be better appreciated if represented graphically
+
+FORERO SANCHEZ, PEDRO
+CALDERON, GIANCARLO
+
+* It seems that your experiment is not evaluating the impact of different ratio of read and write operations per transaction, because the ratio is always 1
+* To show the impact of the different parameters in the success rate you should do more exhaustive tests (test more values)
+* The impact of the different parameters in the success rate can be better appreciated if represented graphically
+
+ZOGER, JIMMY
+SEDAR, MOHOTTIGE ROSHAN
+
+* It seems that the impact of different percentage of modified entries with respect to the total number of entries is not evaluated
+* In some experiments, to show the impact of the different parameters in the success rate you should test more values
+* The impact of the different parameters in the success rate can be better appreciated if represented graphically
+
+DJAKOU DJATCHA, CHRISTIAN
+
+* Better replace 'Added = [ {N , Entry , Value } | Writes ]' with 'Added = lists:keystore(N, 1, Writes,{N, Entry, Value})'
+* To show the impact of the different parameters in the success rate you should do more exhaustive tests (test more values)
+* The impact of the different parameters in the success rate can be better appreciated if represented graphically
+* To evaluate the impact of the different percentage of modified entries with respect to the total number of entries on the success rate, the idea was every process can read/write a subset of the entries, but not necessarily the first ones
+
+FAROKHMANESH, FARNOOSH
+CUBERO LUQUE, LORENZO JESUS
+
+* Better replace 'Added = [ {N , Entry , Value } | Writes ]' with 'Added = lists:keystore(N, 1, Writes,{N, Entry, Value})'
+* You are not evaluating the impact of different percentage of modified entries with respect to the total number of entries
+* Describe changes you did to execute server and clients in different machines
+* Describe changes you did in the client to answer the open questions (when applicable) and
+the default value of the parameters (the ones you are not evaluating) in each experiment
+
+DEMETRIOU, CHARIS
+DEMETRIOU, NICOS
+
+* Some broken references (Figure ??)
+* Describe changes you did to execute server and clients in different machines
+* In some experiments, you should test more values to show the impact of some parameters in the success rate 
+* Describe changes you did in the client to answer the open questions (when applicable) and
+the default value of the parameters (the ones you are not evaluating) in each experiment
+
+GANDUXE PREGONA, ORIOL
+PARRAMÓN TUBELLA, ROGER
+
+* Describe changes you did to execute server and clients in different machines
+* To evaluate the impact of different duration of the transactions on the success rate, the idea was to add the delay after doing the read/write operation but before commit, not before doing the read/write operations
+* To evaluate the impact of the different percentage of modified entries with respect to the total number of entries on the success rate, the idea was every process can read/write a subset of the entries, but not necessarily the first ones
+
+GRMAN, PETER
+TONETTO, LEONARDO
+
+* Discuss also about the success rate in Experiment 3
+* Present the default value of the parameters (the ones you are not evaluating) in each experiment
+
+NUHIC, ISAK
+
+* There are not experiments showing the impact on the success rate of:
+- different number of entries in the store
+- different duration of the transactions 
+- different ratio of read and write operations per transaction
+- different percentage of modified entries with respect to the total number of entries
+* Describe changes you did to execute server and clients in different machines

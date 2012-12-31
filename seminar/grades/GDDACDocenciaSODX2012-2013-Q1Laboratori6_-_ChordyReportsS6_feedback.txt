@@ -1,0 +1,110 @@
+You can check if your replication strategy works by modifying your create_probe and forward_probe methods to show information about the Store and the Replica, execute the following commands, and check the contents of the Store and the Replica.
+
+> N2 = node4:start(2).
+> P = chordy:connect(N2).
+> P ! {add,0,0}.
+> P ! {add,1,1}.
+> P ! {add,2,2}.
+> N2 ! probe.
+> N0 = node4:start(0,N2).
+> N2 ! probe.
+> N1 = node4:start(1,N2).
+> N2 ! probe.
+> N1 ! stop.
+> N2 ! probe.
+> N0 ! stop.
+> N2 ! probe.
+
+FONSECA, ALEXANDRE JORGE
+VU, ANH THU
+
+* Replication does not work in some situations: wrong content of replica
+
+MARRÓN VIDA, DIEGO 
+MELACHRINOS, PETROS
+
+* Node4 does not work
+* Replication is not demonstrated
+* Demonstrations of ring management and node failure could be more user-friendly
+
+CHACON, ALESSANDRO ENRIQUE
+LEVEL RUIZ, ERNESTO ALFONSO
+
+* Some replication details not described: what to do when a node is down
+* Replication does not work properly: Replica stored at Predecessor instead of Successor
+
+BORDALLO ESTOR, RUBEN
+MORON DURAN, FRANCISCO DAVID
+
+* Replication does not work: wrong store and replica sometimes
+* Replication is not demonstrated
+
+FORERO SANCHEZ, PEDRO
+CALDERON, GIANCARLO
+
+* Replication does not work: wrong store and replica sometimes
+* Fault tolerance and Replication are not demonstrated
+* Performance experiments are not presented
+
+ZOGER, JIMMY
+SEDAR, MOHOTTIGE ROSHAN
+
+* Replication does not work in some situations: wrong content of replica
+
+FAROKHMANESH, FARNOOSH
+CUBERO LUQUE, LORENZO JESUS
+
+* Replication does not work properly: wrong store and replica sometimes
+* In stabilize procedure:
+
+Xpid ! {notify, {MyKey, self()}},
+stabilize (Pred, MyKey, {Xkey, Xpid});
+
+should be:
+
+self() ! stabilize,
+{Xkey, Xpid};
+
+DEMETRIOU, CHARIS
+DEMETRIOU, NICOS
+
+* In stabilize procedure:
+
+self() ! stabilize,
+Xpid ! {notify, {MyKey, self()}},
+{Xkey, Xpid};
+
+should be:
+
+self() ! stabilize,
+{Xkey, Xpid};
+
+* node2, node3, and node4 do not work (files cannot be compiled)
+* There are not experiments showing functionalities working
+* Open questions are not answered
+
+GANDUXE PREGONA, ORIOL
+PARRAMÓN TUBELLA, ROGER
+
+* node2, node3, and node4 do not work
+
+GRMAN, PETER
+TONETTO, LEONARDO
+
+* Replication does not work properly: Replica stored at the same node instead of Successor
+* Reduce the number of debug messages in the snapshots
+
+NUHIC, ISAK
+
+* There is not need to list all the code for the 4 versions of the node module. You'd better describe the incremental changes from one version with respect to the previous one
+* Replication is not implemented
+* node2 and node3 do not work
+
+SUBIRATS CASTELL, JOSEP
+
+* Replication does not work in some situations: wrong content of replica
+* Probe functions not working in node3 and node4
+
+DJAKOU DJATCHA, CHRISTIAN
+
+* NP

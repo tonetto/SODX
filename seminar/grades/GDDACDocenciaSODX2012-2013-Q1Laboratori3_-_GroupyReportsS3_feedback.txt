@@ -1,0 +1,96 @@
+FONSECA, ALEXANDRE JORGE
+VU, ANH THU
+
+* In gms3, in the initialization of the slave, Last in not none but {view, N, State, Leader, Peers} 
+* In gms3, view messages are also multicast messages, thus leader needs to increase N after
+sending a view and slave must update the view and the Last message when I = N
+
+MARRÓN VIDA, DIEGO 
+MELACHRINOS, PETROS
+
+* Describe also gms1, adding code snippets, to show how the system works
+* Deeper description of the changes done in gms3 should be included in the document, together 
+with the corresponding code that has been added
+* In gms3, in the initialization of the slave, Last in not {empty} but {view, N, State, Leader, Peers} 
+* In gms3, view messages are also multicast messages, thus leader needs to increase N after
+sending a view and slave must update the view and the Last message when I = N
+* Show in the experiments how you can add nodes dynamically to the system
+
+CHACON, ALESSANDRO ENRIQUE
+LEVEL RUIZ, ERNESTO ALFONSO
+
+* In gms3, show the code with the changes needed in the election function
+
+BORDALLO ESTOR, RUBEN
+MORON DURAN, FRANCISCO DAVID
+
+* Add also code snippets when describing gms1 and gms2
+* Deeper description of the changes done in gms3 should be included in the document, together 
+with the corresponding code that has been added
+* In gms3, in the initialization of the slave, Last in not Peers but {view, N, State, Leader, Peers} 
+
+FORERO SANCHEZ, PEDRO
+CALDERON, GIANCARLO
+
+* Deeper description of the changes done in gms3 should be included in the document, together 
+with the corresponding code that has been added
+* In gms3, in the initialization of the slave, Last in not {} but {view, N, State, Leader, Peers} 
+* In gms3, you must ignore {view} messages when the sequence number is lower than N
+* Show in the experiments how you can add nodes dynamically to the system
+
+ZOGER, JIMMY
+SEDAR, MOHOTTIGE ROSHAN
+
+* In gms3, you must process {view} messages when the sequence number is not N
+
+DJAKOU DJATCHA, CHRISTIAN
+SUBIRATS CASTELL, JOSEP
+
+* In gms3, in the initialization of the slave, Last in not {} but {view, N, State, Leader, Peers} 
+* In gms3, view messages are also multicast messages, thus leader needs to increase N after
+sending a view and slave must update the view and the Last message when I = N
+
+FAROKHMANESH, FARNOOSH
+CUBERO LUQUE, LORENZO JESUS
+
+* Add also code snippets when describing gms1
+* In gms3, in the initialization of the slave, Last in not {} but {view, N, State, Leader, Peers}
+* In gms3, you must process {view} messages when the sequence number is not N
+* Show in the experiments the result of adding nodes dynamically to the system
+
+DEMETRIOU, CHARIS
+DEMETRIOU, NICOS
+
+* In gms3, in the initialization of the slave, Last in not [] but {view, N, State, Leader, Peers}
+* In gms3, the slave must update Last message variable only when it receives {msg} or {view} messages
+* In gms3, view messages are also multicast messages, thus leader needs to increase N after
+sending a view and slave must update the view and the Last message when I = N
+
+GANDUXE PREGONA, ORIOL
+PARRAMÓN TUBELLA, ROGER
+
+* Add also code snippets when describing gms1 and gms2
+* Deeper description of the changes done in gms3 should be included in the document, together 
+with the corresponding code that has been added
+* In gms3, in the initialization of the slave, Last in not {msg, N, State} but {view, N, State, Leader, Peers}
+* In gms3, view messages are also multicast messages, thus leader needs to increase N after
+sending a view and slave must update the view and the Last message when I = N
+* In gms3, you must process {view} messages when the sequence number is not N
+* In the experimentation, show evidence that the system works as you describe, for instance,
+you can capture a snapshot of your Desktop (not only the GUIs of the processes)
+
+GRMAN, PETER
+TONETTO, LEONARDO
+
+* In gms3, you must ignore {view} messages when the sequence number is lower than N
+* In gms3, whereas your solution seems to work, I feel more natural that the leader sends {msg , N, Msg} and the slave checks for {msg , I, Msg} when I >= N and the increases I+1
+
+NUHIC, ISAK
+
+* Add also code snippets when describing gms1
+* Deeper description of the changes done in gms3 should be included in the document, together 
+with the corresponding code that has been added
+* In gms3, the slave must update Last message variable only when it receives {msg} or {view} messages
+* In gms3, view messages are also multicast messages, thus leader needs to increase N after
+sending a view and slave must update the view and the Last message when I = N
+* Show in the experiments the result of adding nodes dynamically to the system

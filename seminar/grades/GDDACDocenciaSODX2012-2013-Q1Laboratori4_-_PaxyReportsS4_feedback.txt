@@ -1,0 +1,96 @@
+MARRÓN VIDA, DIEGO 
+MELACHRINOS, PETROS
+
+* Wrong caption in Figure 7?
+* Better describe the basic functionality of Paxy without the code required to tolerate crashes or optimize the sorry messages
+* The execution of proposers and acceptors in distributed nodes is not described nor demonstrated
+* Acceptor must also save status in the disk when making a new promise
+* Sorry optimization also can be applied in the vote function (not only in collect)
+
+CHACON, ALESSANDRO ENRIQUE
+LEVEL RUIZ, ERNESTO ALFONSO
+
+* Discuss the changes to execute acceptors and proposers in different nodes
+* Show experiment showing the impact of adding delays
+* Show experiment demonstrating the sorry optimization
+
+BORDALLO ESTOR, RUBEN
+MORON DURAN, FRANCISCO DAVID
+
+* Show experiment showing the impact of adding delays
+* Show experiment showing the impact of ignoring sorry messages and droping votes
+* Show experiment showing the impact of increasing the number of acceptors and proposers
+* Discuss the changes to implement the fault tolerance to crashes and show experiment
+* Discuss the changes to implement the sorry optimization and show experiment
+* The changes to execute acceptors and proposers in different nodes are discussed in the wrong section
+
+FORERO SANCHEZ, PEDRO
+CALDERON, GIANCARLO
+
+* Ignoring to send sorry messages should not be a problem to reach consensus
+* Show experiment showing the impact of droping votes
+
+ZOGER, JIMMY
+SEDAR, MOHOTTIGE ROSHAN
+
+* Discuss the changes to execute acceptors and proposers in different nodes and show experiment
+* Show experiment showing the impact of adding delays
+* Show experiment showing the impact of ignoring sorry messages and droping votes
+* Show experiment showing the impact of increasing the number of acceptors and proposers
+* Discuss the changes to implement the fault tolerance to crashes
+
+DJAKOU DJATCHA, CHRISTIAN
+* Show experiment showing the impact of adding delays
+* Show experiment showing the impact of ignoring sorry messages and droping votes
+* Show experiment showing the impact of increasing the number of acceptors and proposers
+* Discuss the changes to implement the fault tolerance to crashes and show experiment
+* Discuss the changes to implement the sorry optimization and show experiment
+* Discuss the changes to execute acceptors and proposers in different nodes and show experiment
+* Some delay in the submission
+
+SUBIRATS CASTELL, JOSEP
+
+* In some experiments, adding the text output would be helpful
+* Show experiment demonstrating the sorry optimization
+
+FAROKHMANESH, FARNOOSH
+CUBERO LUQUE, LORENZO JESUS
+
+* Discuss the changes to execute acceptors and proposers in different nodes and show experiment
+* Show experiment showing the impact of droping vots
+* Show experiment demonstrating the fault tolerance to crashes
+* Show experiment demonstrating the sorry optimization
+* In some experiments, adding the text output would be helpful
+
+DEMETRIOU, CHARIS
+DEMETRIOU, NICOS
+
+* When receiving 'prepare', in acceptor(Name, Promise, Voted, Accepted, PanelId), 'Promise' should be 'Round'. In the source code this is ok, so it seems a copy&paste problem
+* Discuss the changes to execute acceptors and proposers in different nodes and show experiment
+* Show experiment showing the impact of ignoring sorry messages and droping votes
+
+GANDUXE PREGONA, ORIOL
+PARRAMÓN TUBELLA, ROGER
+
+* Sometimes, description of the system needs adding more code to be understood
+* Show experiment showing the basic version working
+* Show experiment showing the impact of adding delays
+* Show experiment showing the impact of ignoring sorry messages and droping votes
+* Show experiment showing the impact of increasing the number of acceptors and proposers
+* Fault tolerance to crashes does not work properly
+* Show experiment showing the sorry optimization
+* Discuss the changes to execute acceptors and proposers in different nodes and show experiment
+
+GRMAN, PETER
+TONETTO, LEONARDO
+
+* Discuss the changes to execute acceptors and proposers in different nodes
+* Some broken refs in page 14
+
+NUHIC, ISAK
+
+* Why having a Name parameter in collect and vote functions?
+* It is not needed to list all the code again to describe fault tolerance
+* Show experiment showing the impact of ignoring sorry messages and droping votes
+* Discuss the changes to implement the sorry optimization and show experiment
+* Discuss the changes to execute acceptors and proposers in different nodes and show experiment
